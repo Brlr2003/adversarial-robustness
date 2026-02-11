@@ -29,4 +29,5 @@ jobs:
         run: pytest tests/ -v
 
       - name: Verify model loads
-        run: python -c "from src.models.resnet import resnet18_cifar10; m = resnet18_cifar10(); print(f'Model params: {sum(p.numel() for p in m.parameters()):,}')"
+        run: |
+          python -c "from src.models.resnet import resnet18_cifar10; m = resnet18_cifar10(); print(f'Model params: {sum(p.numel() for p in m.parameters()):,}')"
