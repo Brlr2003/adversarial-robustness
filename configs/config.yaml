@@ -1,0 +1,54 @@
+# Training Configuration
+training:
+  batch_size: 128
+  epochs: 50
+  learning_rate: 0.1
+  momentum: 0.9
+  weight_decay: 5.0e-4
+  lr_schedule: cosine  # cosine or step
+  step_milestones: [25, 40]
+  step_gamma: 0.1
+
+# Model Configuration
+model:
+  architecture: resnet18
+  num_classes: 10
+  pretrained: false
+
+# Attack Configuration (for adversarial training & evaluation)
+attacks:
+  fgsm:
+    epsilon: 0.031373  # 8/255
+  pgd:
+    epsilon: 0.031373  # 8/255
+    alpha: 0.007843    # 2/255
+    steps: 20
+    random_start: true
+  deepfool:
+    max_iterations: 50
+    overshoot: 0.02
+
+# Adversarial Training
+adversarial_training:
+  method: pgd          # pgd-based adversarial training (Madry et al.)
+  epsilon: 0.031373    # 8/255
+  alpha: 0.007843      # 2/255
+  steps: 7             # fewer steps during training for efficiency
+  random_start: true
+
+# Data
+data:
+  dataset: cifar10
+  data_dir: ./data
+  num_workers: 4
+  pin_memory: true
+
+# Experiment Tracking
+mlflow:
+  experiment_name: adversarial-robustness
+  tracking_uri: ./mlruns
+
+# Paths
+paths:
+  checkpoints: ./checkpoints
+  logs: ./logs

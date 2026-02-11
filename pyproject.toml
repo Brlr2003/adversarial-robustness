@@ -1,0 +1,16 @@
+[project]
+name = "adversarial-robustness-demo"
+version = "1.0.0"
+description = "End-to-end adversarial robustness benchmark: train, attack, defend, and deploy"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
