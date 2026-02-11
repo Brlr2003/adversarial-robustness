@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      - name: Lint with Ruff
+        run: ruff check src/ scripts/ tests/ frontend/
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Verify model loads
+        run: python -c "from src.models.resnet import resnet18_cifar10; m = resnet18_cifar10(); print(f'Model params: {sum(p.numel() for p in m.parameters()):,}')"
