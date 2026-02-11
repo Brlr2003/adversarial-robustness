@@ -41,7 +41,7 @@ app.add_middleware(
 )
 
 # --- Global State ---
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 standard_model = None
 robust_model = None
 

@@ -41,7 +41,7 @@ data:
   dataset: cifar10
   data_dir: ./data
   num_workers: 4
-  pin_memory: true
+  pin_memory: false  # Set to false for MPS compatibility
 
 # Experiment Tracking
 mlflow:
