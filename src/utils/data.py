@@ -4,7 +4,6 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
-
 # CIFAR-10 class labels
 CIFAR10_CLASSES = [
     "airplane", "automobile", "bird", "cat", "deer",

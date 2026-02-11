@@ -7,28 +7,26 @@ It loads models directly (no API needed) for simplicity in deployment.
 Run locally: streamlit run frontend/app.py
 """
 
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import io
+import numpy as np
+import plotly.graph_objects as go
+import streamlit as st
 import torch
 import torch.nn.functional as F
-import numpy as np
-import streamlit as st
-import plotly.graph_objects as go
-from PIL import Image
 import torchvision.transforms as transforms
+from PIL import Image
 from torchvision import datasets
 
-from src.models.resnet import resnet18_cifar10
+from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
 from src.attacks.pgd import pgd_attack
-from src.attacks.deepfool import deepfool_attack
+from src.models.resnet import resnet18_cifar10
 from src.utils.data import CIFAR10_CLASSES
-
 
 # --- Page Config ---
 st.set_page_config(

@@ -10,12 +10,12 @@ provably robust (within the threat model) to first-order attacks.
 
 import os
 
+import mlflow
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 from tqdm import tqdm
-import mlflow
 
 from src.attacks.pgd import pgd_attack
 

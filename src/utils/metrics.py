@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
 from src.attacks.pgd import pgd_attack
-from src.attacks.deepfool import deepfool_attack
 
 
 def evaluate_clean(

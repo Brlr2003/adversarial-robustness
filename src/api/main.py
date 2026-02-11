@@ -7,25 +7,24 @@ Endpoints:
 - GET /health: Health check
 """
 
-import io
 import base64
+import io
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from PIL import Image
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import torchvision.transforms as transforms
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+from pydantic import BaseModel
 
-from src.models.resnet import resnet18_cifar10
+from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
 from src.attacks.pgd import pgd_attack
-from src.attacks.deepfool import deepfool_attack
+from src.models.resnet import resnet18_cifar10
 from src.utils.data import CIFAR10_CLASSES
-
 
 app = FastAPI(
     title="Adversarial Robustness Demo",

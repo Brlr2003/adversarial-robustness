@@ -11,16 +11,16 @@ import argparse
 import os
 import sys
 
+import mlflow
 import torch
 import yaml
-import mlflow
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.models.resnet import resnet18_cifar10
-from src.training.standard import train_standard
 from src.training.adversarial import train_adversarial
+from src.training.standard import train_standard
 from src.utils.data import get_dataloaders
 
 

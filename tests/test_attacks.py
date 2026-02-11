@@ -1,16 +1,17 @@
 """Unit tests for adversarial attacks."""
 
-import torch
-import pytest
-import sys
 import os
+import sys
+
+import pytest
+import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.models.resnet import resnet18_cifar10
+from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
 from src.attacks.pgd import pgd_attack
-from src.attacks.deepfool import deepfool_attack
+from src.models.resnet import resnet18_cifar10
 
 
 @pytest.fixture

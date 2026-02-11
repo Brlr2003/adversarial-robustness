@@ -1,11 +1,11 @@
 """Standard training loop for CIFAR-10."""
 
+import mlflow
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 from tqdm import tqdm
-import mlflow
 
 
 def train_standard(
