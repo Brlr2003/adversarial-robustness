@@ -116,7 +116,7 @@ Training was performed using Apple's Metal Performance Shaders (MPS) backend for
 
 Several implementation challenges were encountered during development:
 
-\textbf{Numerical stability in DeepFool:} Computing gradients for all classes simultaneously required careful management of the computational graph using \texttt{retain\_graph=True} during backward passes. A small epsilon ($10^{-8}$) was added to norm computations to prevent division by zero when gradient differences were near-zero.
+\textbf{Numerical stability in DeepFool:} Computing gradients for all classes at once required careful management of the computational graph using \texttt{retain\_graph=True} during backward passes. A small epsilon value of $10^{-8}$ was added to norm computations to prevent division by zero when gradient differences approached zero.
 
 \textbf{Memory management during PGD:} The multi-step PGD attack accumulates a computational graph across iterations if gradients are not properly detached. The solution was to call \texttt{.detach()} on the adversarial images after each projection step, preventing graph accumulation while maintaining gradient flow within each iteration.
 
@@ -158,7 +158,7 @@ adversarial-robustness/
 +-- Dockerfile                 # Container for deployment
 \end{verbatim}
 
-The entry points (\texttt{scripts/train.py} and \texttt{scripts/evaluate.py}) accept command-line arguments to select training mode (standard, adversarial, or both) and evaluation configurations. Configuration parameters are loaded from a YAML file, ensuring reproducibility across experiments.
+The entry points (\texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}) accept command-line arguments to select training mode (standard, adversarial, or both) and evaluation configurations. Configuration parameters are loaded from a YAML file, ensuring reproducibility across experiments.
 
 \section{Deployment}
 
