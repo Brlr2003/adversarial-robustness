@@ -173,17 +173,15 @@ Figure~\ref{fig:adversarial_examples} illustrates the effect of adversarial atta
         \label{fig:attack_pgd}
     \end{subfigure}
 
-    \vspace{0.5cm}
-
-    \begin{subfigure}[b]{0.95\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/DeepFool.png}
-        \caption{DeepFool attack: finds the minimal perturbation to cross the decision boundary. The standard model is fooled, while the robust model resists the minimal perturbation.}
-        \label{fig:attack_deepfool}
-    \end{subfigure}
-
-    \caption{Visual comparison of adversarial attacks on a CIFAR-10 cat image. Each subfigure shows the original image, the adversarial perturbation (amplified for visibility), the adversarial image, and the predictions of both the standard model (fooled) and the robust model (correct). The perturbations are imperceptible to human observers yet cause confident misclassification in the standard model.}
+    \caption{Visual comparison of FGSM and PGD adversarial attacks on a CIFAR-10 cat image. Each panel shows the original image, the adversarial perturbation (amplified for visibility), the adversarial image, and the predictions of both the standard model (fooled) and the robust model (correct). The perturbations are imperceptible to human observers yet cause confident misclassification in the standard model.}
     \label{fig:adversarial_examples}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/DeepFool.png}
+    \caption{DeepFool attack on the same CIFAR-10 cat image: finds the minimal perturbation to cross the decision boundary. The standard model is fooled, while the robust model resists the minimal perturbation. Unlike FGSM and PGD (Figure~\ref{fig:adversarial_examples}), DeepFool does not use a fixed $\epsilon$ budget but instead computes the smallest perturbation needed to change the prediction.}
+    \label{fig:attack_deepfool}
 \end{figure}
 
 A notable qualitative observation from the interactive demonstration is the difference in confidence calibration between the two models. The standard model often assigns near-100\% confidence to incorrect predictions on adversarial inputs, while the adversarially trained model produces more distributed probability outputs, with confidence around 50--60\% for its predictions. This suggests that adversarial training not only improves robustness but also produces better-calibrated uncertainty estimates.
