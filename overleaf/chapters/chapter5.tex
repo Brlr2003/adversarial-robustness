@@ -52,7 +52,7 @@ Table~\ref{tab:attack_params} summarizes the parameters used for each attack dur
     \end{tabular}
 \end{table}
 
-For adversarial training, PGD was used as the inner attack with $\epsilon = 8/255$, step size $\alpha = 2/255$, and 10 iterations with random start, following the configuration recommended by Madry et al.~\cite{madry2018towards}.
+For adversarial training, PGD was used as the inner attack with $\epsilon = 8/255$, step size $\alpha = 2/255$, and 7 iterations with random start, following the configuration recommended by Madry et al.~\cite{madry2018towards}.
 
 \subsection{Evaluation Protocol}
 
@@ -160,7 +160,7 @@ Figure~\ref{fig:adversarial_examples} illustrates the effect of adversarial atta
     \begin{subfigure}[b]{0.95\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/FGSM.png}
-        \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled with 100\% confidence on the wrong class, while the robust model correctly identifies the cat with approximately 52\% confidence.}
+        \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled with near-100\% confidence on the wrong class, while the robust model correctly identifies the cat with approximately 52\% confidence.}
         \label{fig:attack_fgsm}
     \end{subfigure}
 
@@ -223,7 +223,7 @@ The 10.2\% decrease in clean accuracy is a significant but well-understood cost 
 
 \subsection{Computational Cost}
 
-Adversarial training required approximately $7\times$ more computation per epoch compared to standard training. For 50 epochs on CIFAR-10 with ResNet-18 on an Apple M4 Pro, standard training took approximately 55 minutes while adversarial training took approximately 4.5 hours. The overhead comes from generating 10-step PGD attacks for every training batch, which requires 10 additional forward and backward passes per batch. This computational cost is a significant practical limitation of adversarial training, particularly for larger models and datasets.
+Adversarial training required approximately $7\times$ more computation per epoch compared to standard training. For 50 epochs on CIFAR-10 with ResNet-18 on an Apple M4 Pro, standard training took approximately 55 minutes while adversarial training took approximately 4.5 hours. The overhead comes from generating 7-step PGD attacks for every training batch, which requires 7 additional forward and backward passes per batch. This computational cost is a significant practical limitation of adversarial training, particularly for larger models and datasets.
 
 \section{Attack Comparison}
 
