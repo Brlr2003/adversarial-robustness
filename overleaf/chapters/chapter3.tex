@@ -1,0 +1,195 @@
+\chapter{METHODOLOGY}
+\label{ch:methodology}
+
+% ============================================================
+% STATUS: PARTIALLY COMPLETE - Needs expansion after experiments
+% ============================================================
+
+\section{Introduction}
+
+This chapter presents the methodology for studying adversarial attacks and defenses on deep neural networks. The research follows an experimental approach, implementing multiple attack algorithms on standard benchmark datasets and evaluating adversarial training as a defense mechanism. The methodology is designed to provide reproducible results and systematic comparison across different attack configurations.
+
+\section{Research Design}
+
+The research adopts an experimental design with the following phases:
+
+\begin{enumerate}
+    \item \textbf{Model Training:} Train baseline convolutional neural networks on benchmark datasets to establish clean accuracy baselines.
+    
+    \item \textbf{Attack Implementation:} Implement white-box adversarial attacks (FGSM, BIM/PGD, DeepFool) and evaluate their effectiveness against baseline models.
+    
+    \item \textbf{Defense Application:} Apply adversarial training to the models and evaluate the resulting robustness improvements.
+    
+    \item \textbf{Comparative Analysis:} Systematically compare attacks and defenses across multiple metrics and configurations.
+\end{enumerate}
+
+\section{Datasets}
+
+\subsection{MNIST}
+
+The MNIST dataset~\cite{lecun1998mnist} consists of 70,000 grayscale images of handwritten digits (0-9), with 60,000 training images and 10,000 test images. Each image is 28$\times$28 pixels. MNIST serves as a standard benchmark for initial experiments due to its simplicity and fast training times.
+
+\subsection{CIFAR-10}
+
+The CIFAR-10 dataset consists of 60,000 color images in 10 classes, with 50,000 training images and 10,000 test images. Each image is 32$\times$32 pixels with 3 color channels. CIFAR-10 presents a more challenging classification task and is used to evaluate attack effectiveness on more complex models.
+
+% TODO: Add figure showing sample images from datasets
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{figures/datasets.png}
+%     \caption{Sample images from MNIST (left) and CIFAR-10 (right) datasets.}
+%     \label{fig:datasets}
+% \end{figure}
+
+\section{Model Architectures}
+
+\subsection{MNIST Model}
+
+For MNIST, a small convolutional neural network is used with the following architecture:
+
+\begin{itemize}
+    \item Conv2D (32 filters, 3$\times$3) $\rightarrow$ ReLU $\rightarrow$ Conv2D (64 filters, 3$\times$3) $\rightarrow$ ReLU
+    \item MaxPooling (2$\times$2) $\rightarrow$ Dropout (0.25)
+    \item Flatten $\rightarrow$ Dense (128) $\rightarrow$ ReLU $\rightarrow$ Dropout (0.5)
+    \item Dense (10) $\rightarrow$ Softmax
+\end{itemize}
+
+\TODO{Finalize architecture details after implementation}
+
+\subsection{CIFAR-10 Model}
+
+For CIFAR-10, a ResNet-18 architecture or a custom CNN is used depending on computational resources.
+
+\begin{placeholderbox}
+Architecture details to be finalized based on available computational resources. Options include ResNet-18, VGG-style network, or custom architecture.
+\end{placeholderbox}
+
+\section{Attack Implementations}
+
+\subsection{Fast Gradient Sign Method (FGSM)}
+
+The FGSM attack is implemented following Equation~\ref{eq:fgsm_method}:
+
+\begin{equation}
+    x^{adv} = x + \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y))
+    \label{eq:fgsm_method}
+\end{equation}
+
+The perturbation budget $\epsilon$ is varied to study the relationship between perturbation magnitude and attack success rate. For MNIST, typical values are $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10, typical values are $\epsilon \in \{2/255, 4/255, 8/255\}$.
+
+\subsection{Basic Iterative Method / Projected Gradient Descent (BIM/PGD)}
+
+The iterative attack is implemented as:
+
+\begin{equation}
+    x^{adv}_{t+1} = \Pi_{x,\epsilon}\left(x^{adv}_t + \alpha \cdot \text{sign}(\nabla_x J(\theta, x^{adv}_t, y))\right)
+    \label{eq:pgd_method}
+\end{equation}
+
+where $\Pi_{x,\epsilon}$ projects the result back into the $\epsilon$-ball around $x$. Parameters include:
+\begin{itemize}
+    \item Step size $\alpha$: typically $\epsilon/10$ or $\epsilon/4$
+    \item Number of iterations: 10, 20, or 40 steps
+    \item Random initialization for PGD variant
+\end{itemize}
+
+\subsection{DeepFool}
+
+DeepFool~\cite{moosavidezfooli2016deepfool} is implemented as an iterative algorithm that finds the minimal perturbation to cross the nearest decision boundary. The algorithm linearizes the classifier at each step and computes the minimum perturbation to the closest hyperplane.
+
+\TODO{Add pseudocode for DeepFool implementation}
+
+\subsection{(Optional) Carlini-Wagner Attack}
+
+If computational resources permit, the C\&W $L_2$ attack~\cite{carlini2017towards} will be implemented:
+
+\begin{equation}
+    \min_\delta \|\delta\|_2 + c \cdot f(x + \delta)
+\end{equation}
+
+where $f$ is chosen such that $f(x') \leq 0$ implies misclassification.
+
+\begin{placeholderbox}
+C\&W implementation details pending resource availability.
+\end{placeholderbox}
+
+\section{Defense: Adversarial Training}
+
+\subsection{FGSM Adversarial Training}
+
+For MNIST, FGSM-based adversarial training is applied following~\cite{goodfellow2015explaining}:
+
+\begin{enumerate}
+    \item For each mini-batch, generate adversarial examples using FGSM
+    \item Mix adversarial and clean examples (50/50 ratio)
+    \item Update model parameters on the mixed batch
+\end{enumerate}
+
+\subsection{PGD Adversarial Training}
+
+For CIFAR-10, PGD-based adversarial training is applied following~\cite{madry2018towards}:
+
+\begin{enumerate}
+    \item For each mini-batch, generate adversarial examples using multi-step PGD
+    \item Train on adversarial examples only (or mixed batches)
+    \item Use appropriate perturbation budget ($\epsilon = 8/255$ for $L_\infty$)
+\end{enumerate}
+
+\begin{placeholderbox}
+Training hyperparameters to be finalized: learning rate schedule, number of epochs, batch size.
+\end{placeholderbox}
+
+\section{Evaluation Metrics}
+
+For each configuration (model, dataset, attack, defense), the following metrics are measured:
+
+\subsection{Accuracy Metrics}
+
+\begin{itemize}
+    \item \textbf{Clean Accuracy:} Classification accuracy on unperturbed test data.
+    \item \textbf{Robust Accuracy:} Classification accuracy under adversarial perturbations for different $\epsilon$ values.
+    \item \textbf{Attack Success Rate:} Percentage of correctly classified samples that become misclassified after perturbation.
+\end{itemize}
+
+\subsection{Perturbation Metrics}
+
+\begin{itemize}
+    \item \textbf{Average $L_2$ norm:} Mean Euclidean distance between original and adversarial examples.
+    \item \textbf{Average $L_\infty$ norm:} Maximum per-pixel perturbation averaged across samples.
+\end{itemize}
+
+\subsection{Comparison Table}
+
+Table~\ref{tab:methodology_comparison} summarizes the planned experimental configurations.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Summary of experimental configurations}
+    \label{tab:methodology_comparison}
+    \begin{tabular}{llll}
+        \toprule
+        \textbf{Dataset} & \textbf{Model} & \textbf{Attacks} & \textbf{Defense} \\
+        \midrule
+        MNIST & Small CNN & FGSM, PGD, DeepFool & FGSM-AT \\
+        CIFAR-10 & ResNet-18/Custom & FGSM, PGD, DeepFool & PGD-AT \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\TODO{Add additional experimental configurations as needed}
+
+\section{Tools and Technologies}
+
+The implementation uses the following tools:
+
+\begin{itemize}
+    \item \textbf{Python 3.x:} Primary programming language
+    \item \textbf{PyTorch:} Deep learning framework for model implementation
+    \item \textbf{Foolbox / CleverHans / Custom:} Adversarial attack libraries or custom implementations
+    \item \textbf{NumPy, Matplotlib:} Data manipulation and visualization
+    \item \textbf{Hardware:} \TODO{Specify GPU/hardware used}
+\end{itemize}
+
+\section{Summary}
+
+This methodology provides a systematic framework for studying adversarial attacks and defenses. By implementing multiple attacks on standard benchmarks and evaluating adversarial training, the research will provide practical insights into the robustness of deep neural networks. The following chapter describes the implementation details of this methodology.

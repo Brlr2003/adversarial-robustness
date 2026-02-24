@@ -1,0 +1,80 @@
+\chapter{CONCLUSION AND FUTURE WORK}
+\label{ch:conclusion}
+
+\section{Conclusion}
+
+This thesis has presented a systematic empirical study of adversarial attacks on deep neural networks trained for image classification. By implementing and comparing multiple white-box attacks (FGSM, PGD, DeepFool) on the CIFAR-10 benchmark dataset using a ResNet-18 architecture, and evaluating PGD-based adversarial training as a defense mechanism, this research has provided practical insights into the vulnerability and robustness of deep learning models.
+
+The experimental results demonstrate three central findings. First, standard deep learning models are fundamentally vulnerable to adversarial perturbations: a ResNet-18 achieving 94.1\% clean accuracy drops to 1.2\% under a 20-step PGD attack with perturbations imperceptible to human observers ($\epsilon = 8/255$). Second, single-step attacks like FGSM substantially underestimate this vulnerability, suggesting 18.3\% surviving accuracy compared to PGD's 1.2\%, which underscores the importance of using strong iterative attacks for robustness evaluation. Third, adversarial training provides meaningful defense, improving robust accuracy from near-zero to 45.1\% under PGD attack at the cost of a 10.2 percentage point reduction in clean accuracy---a trade-off that is acceptable in safety-critical deployment scenarios.
+
+An additional finding of practical significance is that adversarially trained models exhibit better confidence calibration. While the standard model assigns near-100\% confidence to incorrect adversarial predictions, the robust model produces more distributed probability outputs, offering a more honest representation of its uncertainty. This property is valuable for real-world systems where knowing when the model is unreliable is as important as the prediction itself.
+
+\section{Research Contributions}
+
+The main contributions of this research are:
+
+\begin{enumerate}
+    \item \textbf{Empirical Attack Comparison:} A systematic comparison of FGSM, PGD, and DeepFool attacks under consistent experimental conditions on the same model and dataset, providing insights into their relative effectiveness, perturbation characteristics, and computational costs. The results confirm PGD as the strongest first-order attack and show that DeepFool finds perturbations $5.4\times$ smaller in $L_2$ norm than fixed-budget attacks.
+    
+    \item \textbf{Adversarial Training Analysis:} A quantitative demonstration of the accuracy--robustness trade-off under PGD-based adversarial training, with results (45.1\% PGD robustness, 83.9\% clean accuracy) consistent with published benchmarks, validating the implementation and providing a reference point for the CIFAR-10/ResNet-18 setting.
+    
+    \item \textbf{Reproducible Framework:} A complete, modular implementation framework with experiment tracking via MLflow, including custom implementations of all three attacks, both training procedures, and an interactive demonstration deployed on HuggingFace Spaces. The codebase is publicly available and structured to facilitate extension with additional attacks and defenses.
+    
+    \item \textbf{Confidence Calibration Observation:} The finding that adversarial training improves confidence calibration, with the robust model producing more distributed predictions compared to the standard model's overconfident but incorrect outputs on adversarial inputs.
+\end{enumerate}
+
+\section{Limitations}
+
+Despite the contributions described above, this research has several limitations:
+
+\begin{enumerate}
+    \item \textbf{Dataset Scope:} The experiments were conducted exclusively on CIFAR-10, which consists of small $32 \times 32$ images in 10 classes. Generalization to larger, more complex datasets such as ImageNet, where perturbation budgets have different visual characteristics, requires further investigation.
+    
+    \item \textbf{Architecture Scope:} Only ResNet-18 was evaluated. Different architectures, particularly Vision Transformers (ViTs), may exhibit different vulnerability profiles and respond differently to adversarial training.
+    
+    \item \textbf{Attack Types:} This study focused on white-box $L_\infty$ attacks. Black-box attacks, transfer attacks, and attacks under the $L_2$ and $L_0$ threat models were not investigated. The Carlini-Wagner attack, while discussed in the literature review, was not implemented due to its computational cost.
+    
+    \item \textbf{Defense Mechanisms:} Only PGD-based adversarial training was evaluated as a defense. Other approaches such as certified defenses, input preprocessing, randomized smoothing, and detection-based methods were not included in the experimental comparison.
+    
+    \item \textbf{Computational Constraints:} Training was performed on a single Apple M4 Pro rather than dedicated GPU infrastructure, which limited the number of training epochs, attack iterations, and random restarts that could be explored. Adversarial training required approximately 4.5 hours for 50 epochs, constraining the hyperparameter search.
+\end{enumerate}
+
+\section{Future Work}
+
+The research presented in this thesis opens several directions for future investigation.
+
+\subsection{Short-term Future Work}
+
+In the immediate future, the following extensions could be pursued:
+
+\begin{itemize}
+    \item \textbf{Carlini-Wagner Attack:} Implementing the C\&W $L_2$ attack would provide a more complete picture of the adversarially trained model's robustness, particularly since C\&W was specifically designed to circumvent defenses that gradient-masking attacks cannot break.
+    
+    \item \textbf{MNIST Experiments:} Extending the evaluation to MNIST with a smaller CNN would enable direct comparison with the extensive MNIST results in the literature and demonstrate how adversarial vulnerability varies with dataset complexity.
+    
+    \item \textbf{Transferability Study:} Investigating whether adversarial examples crafted on the standard model transfer to the robust model (and vice versa) would provide insights into the practical threat of black-box attacks in multi-model deployments.
+    
+    \item \textbf{Multiple Random Restarts:} Evaluating PGD with multiple random restarts would provide tighter robustness bounds and a more thorough security evaluation.
+\end{itemize}
+
+\subsection{Long-term Future Work}
+
+Looking further ahead, the following research directions are promising:
+
+\begin{itemize}
+    \item \textbf{Large-Scale Evaluation:} Extending the framework to ImageNet-scale datasets with larger architectures would validate whether the observed trade-offs and relative attack strengths hold at scale.
+    
+    \item \textbf{Certified Defenses:} Investigating certified defense mechanisms such as randomized smoothing, which provide provable robustness guarantees within a specified perturbation budget, would complement the empirical defenses studied here.
+    
+    \item \textbf{Real-World Applications:} Studying adversarial robustness in specific application domains---such as medical imaging where misclassification has direct safety implications, or autonomous driving where physical-world adversarial examples have been demonstrated---would bridge the gap between benchmark results and practical deployment.
+    
+    \item \textbf{Architectural Robustness:} Comparing the adversarial vulnerability and trainability of different architectures (CNNs, Vision Transformers, hybrid models) could reveal whether certain architectural choices provide inherent robustness advantages.
+    
+    \item \textbf{Efficient Adversarial Training:} Exploring methods such as Adversarial Training for Free~\cite{shafahi2019adversarial} and other efficient variants could address the significant computational overhead of PGD-based adversarial training observed in this study.
+\end{itemize}
+
+\section{Final Remarks}
+
+The vulnerability of deep neural networks to adversarial examples represents one of the most significant challenges for the trustworthy deployment of AI systems. This thesis has demonstrated, through systematic experimentation, both the severity of this vulnerability and the effectiveness of adversarial training as a practical defense. A standard ResNet-18 that achieves 94\% accuracy on clean images can be reduced to near-zero accuracy by imperceptible perturbations, while adversarial training recovers meaningful robustness at an acceptable cost in clean performance.
+
+As deep learning systems become increasingly integrated into autonomous vehicles, medical diagnosis, security infrastructure, and other safety-critical applications, ensuring their robustness against adversarial manipulation becomes paramount. The methods, results, and interactive demonstration developed in this research provide both a reference implementation for the adversarial robustness community and a tangible illustration of why this line of research matters for the reliable deployment of AI systems.

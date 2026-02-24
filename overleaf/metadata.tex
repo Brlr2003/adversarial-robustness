@@ -1,0 +1,96 @@
+% Thesis Metadata
+% Fill in your personal information and thesis details here
+
+% Thesis type
+\MSc  % For Master of Science
+
+% Author information
+\author{Omar}{Alsafarti}
+\studentid{42012418}
+
+% Thesis titles
+\title{ADVERSARIAL ATTACKS ON DEEP NEURAL NETWORKS: GENERATION, EVALUATION, AND ROBUST TRAINING}
+\titleenglish{ADVERSARIAL ATTACKS ON DEEP NEURAL NETWORKS: GENERATION, EVALUATION, AND ROBUST TRAINING}
+\titlealbanian{SULMET KUNDËRSHTARE NË RRJETET NEURALE TË THELLA: GJENERIMI, VLERËSIMI DHE TRAJNIMI I QËNDRUESHËM}
+
+% Dates
+\date{June 2026}
+\dateenglish{June 2026}
+
+% Supervisor
+\supervisor{Assoc. Prof. Dr. Arban Uka}
+\supervisorenglish{Assoc. Prof. Dr. Arban Uka}
+
+% Department and Faculty
+\department{Computer Engineering}
+\departmentenglish{Computer Engineering}
+\faculty{Faculty of Architecture and Engineering}
+\facultyenglish{Faculty of Architecture and Engineering}
+
+% Head of Department (for approval page)
+\headofdepartment{Dr. Florenc Skuka} 
+
+% Committee members (for approval page)
+\committee
+    {Assoc. Prof. Dr. Arban Uka}  % Chair/Supervisor
+    {Assoc. Prof. Dr. [Member Two]}  % TODO: Add committee member
+    {Asst. Prof. Dr. [Member Three]}  % TODO: Add committee member
+    {}  % Leave empty if not applicable
+    {}  % Leave empty if not applicable
+
+% Abstract (English)
+\abstract{
+Deep learning models achieve state-of-the-art performance on tasks such as image classification, yet they are notoriously vulnerable to adversarial examples---inputs that have been perturbed by small, often imperceptible changes which cause misclassification with high confidence. This vulnerability raises serious security and safety concerns for systems deployed in autonomous driving, biometrics, and cybersecurity. Building on foundational work, adversarial attacks have been formalized as optimization problems that exploit gradients of deep neural networks to construct worst-case perturbations under various norm constraints.
+
+This thesis focuses on the practical study of adversarial attacks against image classification models. A ResNet-18 convolutional neural network is trained on the CIFAR-10 benchmark dataset, and three white-box attacks (FGSM, PGD, DeepFool) are implemented and compared. The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under 20-step PGD attack at $\epsilon = 8/255$. PGD-based adversarial training is then applied, producing a robust model that maintains 45.1\% accuracy under the same attack at the cost of a 10.2 percentage point reduction in clean accuracy. DeepFool analysis reveals that the standard model's decision boundaries are on average only 0.248 $L_2$ distance from the data points, while adversarial training increases this distance to 0.892. These results confirm the severity of adversarial vulnerability in deep neural networks and validate adversarial training as an effective, practical defense mechanism.
+}
+
+% Keywords (English)
+\keywordsenglish{Adversarial Examples, Deep Neural Networks, FGSM, PGD, DeepFool, Adversarial Training, Robustness}
+
+% Abstrakt (Albanian)
+\abstrakt{
+Modelet e mësimit të thellë arrijnë performancë të jashtëzakonshme në detyra si klasifikimi i imazheve, megjithatë ato janë të njohura për cenueshmërinë ndaj shembujve kundërshtarë---inpute që janë ndryshuar me ndryshime të vogla, shpesh të padukshme, të cilat shkaktojnë klasifikim të gabuar me besueshmëri të lartë. Kjo cenueshmëri ngre shqetësime serioze për sigurinë e sistemeve të përdorura në drejtimin autonom, biometrikë dhe sigurinë kibernetike.
+
+Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe tre sulme white-box (FGSM, PGD, DeepFool) implementohen dhe krahasohen. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa. Trajnimi kundërshtar i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën të njëjtin sulm, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
+}
+
+% Keywords (Albanian)
+\keywords{Shembuj Kundërshtarë, Rrjete Neurale të Thella, FGSM, PGD, DeepFool, Trajnim Kundërshtar, Qëndrueshmëri}
+
+% Acknowledgments
+\acknowledgments{
+I would like to express my sincere gratitude to my supervisor, Assoc. Prof. Dr. Arban Uka, for his invaluable guidance, support, and encouragement throughout my research. His expertise in the field and constructive feedback were instrumental in shaping this work.
+
+I am also grateful to my family for their continuous support and understanding during my studies, and to my friends and colleagues at Epoka University for the stimulating academic environment.
+
+Finally, I would like to thank Epoka University for providing me with the opportunity to pursue my graduate studies and for the resources that made this research possible.
+}
+
+% Dedication (optional - uncomment if needed)
+% \dedication{
+%     To my family...
+% }
+
+% Abbreviations
+\abbreviations{
+\begin{tabular}{ll}
+AE & Adversarial Example \\
+BIM & Basic Iterative Method \\
+C\&W & Carlini-Wagner Attack \\
+CNN & Convolutional Neural Network \\
+DNN & Deep Neural Network \\
+FGSM & Fast Gradient Sign Method \\
+GPU & Graphics Processing Unit \\
+MPS & Metal Performance Shaders \\
+PGD & Projected Gradient Descent \\
+PGD-AT & PGD-based Adversarial Training \\
+ResNet & Residual Network \\
+SGD & Stochastic Gradient Descent \\
+UAP & Universal Adversarial Perturbation \\
+\end{tabular}
+}
+
+% Optional: Disable table or figure lists if not needed
+% \NoTableList
+% \NoFigureList

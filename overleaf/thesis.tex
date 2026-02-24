@@ -1,0 +1,96 @@
+% Main Thesis Document
+% Epoka University MSc Thesis Template
+% Topic: Adversarial Attacks on Deep Neural Networks
+% Author: Omar Alsafarti
+
+\documentclass{epoka}
+
+% Additional packages you might need
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{tcolorbox}  % For colored boxes that work with paragraphs
+
+% ============================================================
+% HIGHLIGHTING FOR INCOMPLETE SECTIONS
+% Yellow highlight = Content you need to write/complete
+% ============================================================
+\definecolor{todocolor}{RGB}{255,255,150}
+\definecolor{todotextcolor}{RGB}{180,100,0}
+
+% Simple inline TODO - just colored text in brackets
+\newcommand{\TODO}[1]{\textcolor{todotextcolor}{\textbf{[TODO: #1]}}}
+
+% Block placeholder - using tcolorbox for multi-line content
+\newtcolorbox{placeholderbox}{
+    colback=todocolor,
+    colframe=todotextcolor,
+    boxrule=1pt,
+    arc=3pt,
+    left=5pt,
+    right=5pt,
+    top=5pt,
+    bottom=5pt
+}
+
+% Simple placeholder command for single-line use (if needed)
+% Use \begin{placeholderbox}...\end{placeholderbox} for multi-line content
+% ============================================================
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=black,
+    citecolor=black,
+    urlcolor=blue,
+    pdftitle={Adversarial Attacks on Deep Neural Networks},
+    pdfauthor={Omar Alsafarti},
+}
+
+% Code listing setup
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    captionpos=b,
+    language=Python
+}
+
+% Include your thesis metadata
+\input{metadata.tex}
+
+\begin{document}
+
+% Generate front matter (cover page, abstract, TOC, etc.)
+\makefrontmatter
+
+% Include chapters
+\input{chapters/chapter1.tex}
+\input{chapters/chapter2.tex}
+\input{chapters/chapter3.tex}
+\input{chapters/chapter4.tex}
+\input{chapters/chapter5.tex}
+\input{chapters/chapter6.tex}
+
+% Bibliography
+\bibliography{references}
+
+% Appendices (if any)
+\appendix
+\input{chapters/appendixA.tex}
+
+\end{document}
