@@ -54,15 +54,9 @@ For MNIST, a small convolutional neural network is used with the following archi
     \item Dense (10) $\rightarrow$ Softmax
 \end{itemize}
 
-\TODO{Finalize architecture details after implementation}
-
 \subsection{CIFAR-10 Model}
 
-For CIFAR-10, a ResNet-18 architecture or a custom CNN is used depending on computational resources.
-
-\begin{placeholderbox}
-Architecture details to be finalized based on available computational resources. Options include ResNet-18, VGG-style network, or custom architecture.
-\end{placeholderbox}
+For CIFAR-10, a ResNet-18 architecture adapted for 32$\times$32 images is used. The full architecture details, including the modifications to the standard ResNet-18 for CIFAR-10 compatibility, are described in Chapter~\ref{ch:implementation}.
 
 \section{Attack Implementations}
 
@@ -97,7 +91,7 @@ where $\Pi_{x,\epsilon}$ projects the result back into the $\epsilon$-ball aroun
 
 DeepFool~\cite{moosavidezfooli2016deepfool} is implemented as an iterative algorithm that finds the minimal perturbation to cross the nearest decision boundary. The algorithm linearizes the classifier at each step and computes the minimum perturbation to the closest hyperplane.
 
-\TODO{Add pseudocode for DeepFool implementation}
+The DeepFool pseudocode and implementation details are presented in Chapter~\ref{ch:implementation}.
 
 \subsection{(Optional) Carlini-Wagner Attack}
 
@@ -109,9 +103,6 @@ If computational resources permit, the C\&W $L_2$ attack~\cite{carlini2017toward
 
 where $f$ is chosen such that $f(x') \leq 0$ implies misclassification.
 
-\begin{placeholderbox}
-C\&W implementation details pending resource availability.
-\end{placeholderbox}
 
 \section{Defense: Adversarial Training}
 
@@ -135,9 +126,7 @@ For CIFAR-10, PGD-based adversarial training is applied following~\cite{madry201
     \item Use appropriate perturbation budget ($\epsilon = 8/255$ for $L_\infty$)
 \end{enumerate}
 
-\begin{placeholderbox}
-Training hyperparameters to be finalized: learning rate schedule, number of epochs, batch size.
-\end{placeholderbox}
+The specific training hyperparameters used for both standard and adversarial training are detailed in Chapter~\ref{ch:results}.
 
 \section{Evaluation Metrics}
 
@@ -176,8 +165,6 @@ Table~\ref{tab:methodology_comparison} summarizes the planned experimental confi
     \end{tabular}
 \end{table}
 
-\TODO{Add additional experimental configurations as needed}
-
 \section{Tools and Technologies}
 
 The implementation uses the following tools:
@@ -187,7 +174,7 @@ The implementation uses the following tools:
     \item \textbf{PyTorch:} Deep learning framework for model implementation
     \item \textbf{Foolbox / CleverHans / Custom:} Adversarial attack libraries or custom implementations
     \item \textbf{NumPy, Matplotlib:} Data manipulation and visualization
-    \item \textbf{Hardware:} \TODO{Specify GPU/hardware used}
+    \item \textbf{Hardware:} Apple M4 Pro with Metal Performance Shaders (MPS) backend
 \end{itemize}
 
 \section{Summary}
