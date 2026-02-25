@@ -14,63 +14,59 @@ I also noticed that adversarially trained models have better confidence calibrat
 Here is what I think this research contributes:
 
 \begin{enumerate}
-    \item \textbf{Empirical Attack Comparison:} I compared FGSM, PGD, and DeepFool side by side under the same experimental conditions, on the same model and dataset. This gave a clear picture of how they differ in effectiveness, perturbation characteristics, and computation time. PGD came out as the strongest first-order attack, and DeepFool found perturbations $5.4\times$ smaller in $L_2$ norm than the fixed-budget attacks.
+    \item \textbf{Attack comparison:} I ran FGSM, PGD, and DeepFool on the same ResNet-18 with the same evaluation setup. PGD was the strongest (1.2\% surviving accuracy at $\epsilon=8/255$), FGSM was weaker (18.3\%), and DeepFool achieved 91.1\% success with perturbations $5.4\times$ smaller in $L_2$ norm.
 
-    \item \textbf{Adversarial Training Analysis:} I quantified the accuracy versus robustness trade-off under PGD-based adversarial training, getting 45.1\% PGD robustness and 83.9\% clean accuracy. These numbers match the published benchmarks, which validates my implementation and provides a reference point for the CIFAR-10/ResNet-18 setting.
+    \item \textbf{Adversarial training numbers:} The adversarially trained model got 45.1\% robust accuracy under PGD and 83.9\% clean accuracy. These match what Madry et al. reported, so my implementation is on the right track.
 
-    \item \textbf{Reproducible Framework:} I built a complete, modular implementation with MLflow tracking, custom implementations of all three attacks, both training procedures, and an interactive demo on HuggingFace Spaces. The code is publicly available and set up so that new attacks or defenses can be added easily.
+    \item \textbf{Open-source framework:} All the code is public on GitHub: three attack implementations, two training loops, MLflow integration, and a live Streamlit demo on HuggingFace Spaces. Adding a new attack means writing one Python file.
 
-    \item \textbf{Confidence Calibration Observation:} I found that adversarial training improves confidence calibration. The robust model gives more spread-out predictions compared to the standard model, which is overconfident and wrong on adversarial inputs.
+    \item \textbf{Calibration finding:} The robust model does not just get adversarial examples right more often, it also gives more reasonable confidence scores. The standard model says ``99\% cat'' on a wrong answer; the robust model says ``55\% cat'' on a right one.
 \end{enumerate}
 
 \section{Limitations}
 
-That said, this research has several limitations I want to be upfront about:
+There are obvious limitations:
 
 \begin{enumerate}
-    \item \textbf{Dataset Scope:} I only tested on CIFAR-10, which has small $32 \times 32$ images in 10 classes. The results might not generalize directly to larger datasets like ImageNet, where the same perturbation budgets would look different visually.
+    \item \textbf{Only CIFAR-10.} The images are tiny ($32 \times 32$, 10 classes). $\epsilon = 8/255$ on a 32-pixel image is different from $\epsilon = 8/255$ on a 224-pixel image. I cannot claim these results transfer to ImageNet without running those experiments.
 
-    \item \textbf{Architecture Scope:} I only used ResNet-18. Other architectures, especially Vision Transformers (ViTs), might have different vulnerability profiles and could respond differently to adversarial training.
+    \item \textbf{Only ResNet-18.} Vision Transformers, for example, might be more or less vulnerable. I do not know because I did not test them.
 
-    \item \textbf{Attack Types:} I focused on white-box $L_\infty$ attacks. I did not look at black-box attacks, transfer attacks, or attacks under the $L_2$ and $L_0$ threat models. I also did not implement the Carlini-Wagner attack because of how computationally expensive it is, though I discussed it in the literature review.
+    \item \textbf{Only white-box $L_\infty$.} No black-box attacks, no transfer attacks, no $L_2$ or $L_0$ threat models. I also skipped Carlini-Wagner because it would have taken too long to run on my hardware.
 
-    \item \textbf{Defense Mechanisms:} I only tested PGD-based adversarial training as a defense. There are other approaches like certified defenses, input preprocessing, randomized smoothing, and detection-based methods that I did not include.
+    \item \textbf{Only one defense.} PGD adversarial training is not the only option. Certified defenses, randomized smoothing, and input preprocessing exist too. I did not have time to compare them all.
 
-    \item \textbf{Computational Constraints:} I trained everything on a single Apple M4 Pro instead of dedicated GPU hardware, which limited how many epochs, attack iterations, and random restarts I could try. Adversarial training alone took about 4.5 hours for 50 epochs, so there was not much room for extensive hyperparameter tuning.
+    \item \textbf{Hardware limitations.} Everything ran on an Apple M4 Pro laptop. Adversarial training took 4.5 hours for 50 epochs, which did not leave much room for trying different hyperparameter combinations.
 \end{enumerate}
 
 \section{Future Work}
 
-There are several directions I would like to explore if I continue this work.
+If I had more time, here is what I would do next.
 
-\subsection{Short-term Future Work}
-
-In the near term, these are the extensions I would prioritize:
+\subsection{Short-term}
 
 \begin{itemize}
-    \item \textbf{Carlini-Wagner Attack:} Implementing the C\&W $L_2$ attack would provide a more complete picture of the adversarially trained model's robustness, particularly since C\&W was specifically designed to circumvent defenses that gradient-masking attacks cannot break.
-    
-    \item \textbf{MNIST Experiments:} Extending the evaluation to MNIST with a smaller CNN would enable direct comparison with the extensive MNIST results in the literature and demonstrate how adversarial vulnerability varies with dataset complexity.
-    
-    \item \textbf{Transferability Study:} Investigating whether adversarial examples crafted on the standard model transfer to the robust model (and vice versa) would provide insights into the practical threat of black-box attacks in multi-model deployments.
-    
-    \item \textbf{Multiple Random Restarts:} Evaluating PGD with multiple random restarts would provide tighter robustness bounds and a more thorough security evaluation.
+    \item \textbf{Add Carlini-Wagner.} It is the gold standard for breaking defenses and I want to know how my adversarially trained model holds up against it.
+
+    \item \textbf{Run the same experiments on MNIST.} The MNIST literature is huge, and it would be good to have a direct comparison. Plus it would show how dataset difficulty affects vulnerability.
+
+    \item \textbf{Test transferability.} Do adversarial examples made for the standard model also fool the robust one? That matters for black-box threat scenarios.
+
+    \item \textbf{Use more PGD restarts.} I only used one random restart, and multiple restarts would give tighter robustness estimates.
 \end{itemize}
 
-\subsection{Long-term Future Work}
-
-Looking further out, these are some directions I think are worth pursuing:
+\subsection{Long-term}
 
 \begin{itemize}
-    \item \textbf{Large-Scale Evaluation:} Extending the framework to ImageNet-scale datasets with larger architectures would validate whether the observed trade-offs and relative attack strengths hold at scale.
-    
-    \item \textbf{Certified Defenses:} Investigating certified defense mechanisms such as randomized smoothing, which provide provable robustness guarantees within a specified perturbation budget, would complement the empirical defenses studied here.
-    
-    \item \textbf{Real-World Applications:} Studying adversarial robustness in specific domains like medical imaging (where misclassification has direct safety implications) or autonomous driving (where physical-world adversarial examples have already been demonstrated) would help bridge the gap between benchmark results and practical deployment.
-    
-    \item \textbf{Architectural Robustness:} Comparing the adversarial vulnerability and trainability of different architectures (CNNs, Vision Transformers, hybrid models) could reveal whether certain architectural choices provide inherent robustness advantages.
-    
-    \item \textbf{Efficient Adversarial Training:} Exploring methods such as Adversarial Training for Free~\cite{shafahi2019adversarial} and other efficient variants could address the significant computational overhead of PGD-based adversarial training observed in this study.
+    \item \textbf{Scale up to ImageNet.} The real question is whether these results hold on bigger images with more classes and bigger models.
+
+    \item \textbf{Try certified defenses.} Randomized smoothing gives mathematical guarantees on robustness. That would be a nice complement to the empirical approach I took here.
+
+    \item \textbf{Domain-specific testing.} Medical imaging and autonomous driving are where adversarial robustness actually matters. Running these experiments on X-ray images or traffic sign datasets would be more meaningful than CIFAR-10 cats and dogs.
+
+    \item \textbf{Compare architectures.} Are Vision Transformers more or less vulnerable than CNNs? Nobody seems to have a clear answer yet, and my framework could be extended to test this.
+
+    \item \textbf{Speed up adversarial training.} 4.5 hours for 50 epochs on a small dataset is already painful. Methods like Adversarial Training for Free~\cite{shafahi2019adversarial} could help with that.
 \end{itemize}
 
 \section{Final Remarks}

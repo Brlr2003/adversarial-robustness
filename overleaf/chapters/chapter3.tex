@@ -3,11 +3,11 @@
 
 \section{Introduction}
 
-In this chapter I describe how I went about studying adversarial attacks and defenses on deep neural networks. The approach is experimental: I implemented multiple attack algorithms, ran them on standard benchmark datasets, and then tested adversarial training as a way to defend against them. I tried to keep everything reproducible and set things up so that I could compare different attack configurations in a systematic way.
+This chapter is about how I structured my experiments. I implemented three different attack algorithms, ran them on two benchmark datasets, and then tried adversarial training to see if it helps. I will walk through the datasets, models, attacks, defense, and evaluation metrics below.
 
 \section{Research Design}
 
-The research follows four main phases:
+I split the work into four phases:
 
 \begin{enumerate}
     \item \textbf{Model Training:} Train baseline convolutional neural networks on benchmark datasets to establish clean accuracy baselines.
@@ -23,7 +23,7 @@ The research follows four main phases:
 
 \subsection{MNIST}
 
-MNIST~\cite{lecun1998mnist} is a dataset of 70,000 grayscale images of handwritten digits (0 through 9), split into 60,000 for training and 10,000 for testing. Each image is 28$\times$28 pixels. I chose MNIST as a starting benchmark because it is simple enough to train on quickly, which makes it useful for testing that everything works before moving to harder datasets.
+MNIST~\cite{lecun1998mnist} has 70,000 grayscale images of handwritten digits (0 through 9). The split is 60,000 for training and 10,000 for testing, with each image at 28$\times$28 pixels. It is a simple dataset and models can learn it fast, so I used it mainly to debug my code and make sure the attacks were working correctly before moving on to CIFAR-10.
 
 \subsection{CIFAR-10}
 
@@ -126,7 +126,7 @@ The specific training hyperparameters used for both standard and adversarial tra
 
 \section{Evaluation Metrics}
 
-For every combination of model, dataset, attack, and defense, I measured the following:
+For each experiment I tracked these metrics:
 
 \subsection{Accuracy Metrics}
 

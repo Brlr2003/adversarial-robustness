@@ -9,7 +9,7 @@ This chapter presents the results from my experiments. I evaluated the three adv
 
 \subsection{Training Configuration}
 
-I trained two ResNet-18 models on CIFAR-10: one with standard training and one with adversarial training. Both used the same base architecture and optimizer settings, which are summarized in Table~\ref{tab:training_config}.
+I trained two ResNet-18 models on CIFAR-10. Same architecture, same optimizer, same number of epochs. The only difference is that one was trained normally and the other with PGD adversarial training. Table~\ref{tab:training_config} has the full settings.
 
 \begin{table}[htbp]
     \centering
@@ -149,7 +149,7 @@ DeepFool works differently from the other two attacks. Instead of working within
     \end{tabular}
 \end{table}
 
-DeepFool manages to fool 91.1\% of the correctly classified images for the standard model (see Figure~\ref{fig:attack_deepfool}), with an average $L_2$ perturbation of just 0.248. For the adversarially trained model, the perturbations need to be about $3.6\times$ larger on average to get a misclassification, and the success rate drops to 62.0\%. This tells us that adversarial training is genuinely pushing the decision boundaries further away from the data points, giving the model a larger robustness radius.
+Against the standard model, DeepFool fools 91.1\% of correctly classified images (Figure~\ref{fig:attack_deepfool}) with an average $L_2$ perturbation of just 0.248. That is a very small number. Against the adversarially trained model, it needs about $3.6\times$ more perturbation on average, and even then the success rate only reaches 62.0\%. So the decision boundaries really have moved further from the data after adversarial training.
 
 \subsection{Visual Examples}
 
@@ -184,7 +184,7 @@ Figure~\ref{fig:adversarial_examples} shows what adversarial attacks actually lo
     \label{fig:attack_deepfool}
 \end{figure}
 
-One thing that stood out while using the interactive demo is how different the confidence levels are between the two models. The standard model often gives near-100\% confidence to its wrong predictions on adversarial inputs, while the adversarially trained model spreads its probabilities out more, typically giving around 50 to 60\% confidence. This suggests that adversarial training does not just improve robustness but also makes the model more honest about when it is uncertain.
+Playing with the demo, I noticed something interesting about the confidence scores. When the standard model gets fooled, it is not just wrong, it is wrong with 99\% confidence. The adversarially trained model is more cautious. Even when it gets the answer right on an adversarial input, it usually gives something like 50 to 60\% confidence instead of being overly sure. That is actually a useful property because it means the model ``knows'' when it is dealing with something unusual.
 
 \section{Adversarial Training Results}
 

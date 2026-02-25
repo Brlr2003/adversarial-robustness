@@ -3,23 +3,21 @@
 
 \section{Introduction}
 
-In this chapter I walk through how I actually built everything: the adversarial attack algorithms, the defense mechanisms, and the experimental framework that ties it all together. The whole thing is written in PyTorch, with my own implementations of all three attacks (FGSM, PGD, DeepFool), both standard and adversarial training pipelines, and an interactive demo application that I deployed on HuggingFace Spaces.
+Now I get to the actual code. This chapter covers the implementation: the attack algorithms, the training loops, and the web demo. Everything is in PyTorch. I wrote FGSM, PGD, and DeepFool from scratch, built two training pipelines (standard and adversarial), and put together a Streamlit app on HuggingFace Spaces where people can try the attacks live.
 
-Going from the methodology described in the previous chapter to working code involved dealing with quite a few practical issues around computational efficiency, numerical stability, and making sure results are reproducible. I used MLflow to track all experiments so I could compare results across different configurations.
+Turning the methodology from the previous chapter into working software meant dealing with memory issues, numerical edge cases, and PyTorch-specific quirks. MLflow handled the experiment tracking.
 
 \section{System Architecture}
 
-I organized the code into a modular architecture so that each part can be developed and tested independently. There are five main modules:
+The code is split into five modules. The \textbf{Model Module} has the ResNet-18 adapted for CIFAR-10. The \textbf{Attack Module} has FGSM, PGD, and DeepFool, all with the same function signature so I can swap them freely. The \textbf{Training Module} runs standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} is the Streamlit demo.
 
-The \textbf{Model Module} has the ResNet-18 architecture adapted for CIFAR-10. The \textbf{Attack Module} contains my implementations of each adversarial attack, all following the same interface so they are interchangeable. The \textbf{Training Module} handles both standard and adversarial training loops, with MLflow tracking built in. The \textbf{Evaluation Module} runs the robustness evaluations across different attack types and perturbation budgets. And the \textbf{Frontend Module} provides an interactive Streamlit-based demo.
-
-The nice thing about this setup is that I can swap out or add new attacks without touching the training or evaluation code, and the same evaluation pipeline works for both the standard and adversarially trained models.
+I kept things modular on purpose. If I want to add a fourth attack later, I just write one new file and plug it in without changing anything else.
 
 \section{Implementation Details}
 
 \subsection{Model Implementation}
 
-For CIFAR-10 I implemented a ResNet-18~\cite{he2016deep} with some modifications to handle the smaller image size. The original ResNet-18 was designed for ImageNet images at $224 \times 224$ pixels, but CIFAR-10 images are only $32 \times 32$. If you use the standard architecture as-is, the aggressive downsampling in the first layers destroys too much spatial information. So I made two changes: I replaced the initial $7 \times 7$ convolution (stride 2) with a $3 \times 3$ convolution (stride 1, padding 1), and I removed the initial max pooling layer entirely. This keeps the spatial resolution intact in the early layers, which matters a lot when your input is this small.
+The model is a ResNet-18~\cite{he2016deep}, but I had to modify it because the original was built for $224 \times 224$ ImageNet images and CIFAR-10 only has $32 \times 32$. With the original first layer (a $7 \times 7$ conv with stride 2 followed by max pooling), the feature maps shrink way too fast and you lose most of the spatial information before the residual blocks even start. I swapped in a $3 \times 3$ conv with stride 1 and padding 1, and got rid of the max pooling. That fixed it.
 
 The network has four residual layers, each with two BasicBlock modules. Each BasicBlock does two $3 \times 3$ convolutions with batch normalization and ReLU, and there is a skip connection that adds the input directly to the output (that is the ``residual'' part). When the spatial dimensions need to shrink (in layers 2 through 4), I use a $1 \times 1$ convolution in the shortcut path to match the new dimensions. The channel count goes from 64 to 128 to 256 to 512 across the four layers. At the end, adaptive average pooling brings everything down to $1 \times 1$ spatially, and a fully connected layer outputs 10 class logits. In total the model has about 11.17 million parameters.
 
@@ -93,7 +91,7 @@ The per-image processing makes DeepFool quite a bit slower than the batched atta
 
 For adversarial training I followed the PGD-based approach from Madry et al.~\cite{madry2018towards}. The idea is simple in principle: at each training step, generate PGD adversarial examples from the current mini-batch and train the model on those instead of the clean inputs.
 
-There is one subtle detail that took me a while to get right, and it involves batch normalization. When generating the adversarial examples, the model needs to be in evaluation mode so the batch normalization running statistics do not get corrupted by the adversarial inputs. After generating the adversarial batch, I switch the model back to training mode for the actual parameter update. If you skip this step, the batch norm statistics get messed up and training does not converge properly.
+One thing that caused me trouble was batch normalization. The issue is that when you generate adversarial examples, you do a forward pass through the model, and if the model is in training mode, those adversarial inputs update the batch norm running statistics. That corrupts them. The fix is to call \texttt{model.eval()} before generating the attack and \texttt{model.train()} after, before the actual weight update. Took me a while to figure out why my adversarial training was not converging until I realized this was the problem.
 
 For the optimizer I used SGD with momentum (0.9) and weight decay ($5 \times 10^{-4}$), with a cosine annealing schedule starting from a learning rate of 0.1. I saved model checkpoints based on PGD robustness accuracy rather than clean accuracy, since the whole point of adversarial training is to maximize robustness. All the metrics (loss, clean accuracy, robust accuracy, learning rate) get logged to MLflow at each epoch so I can compare experiments easily.
 
@@ -114,15 +112,15 @@ All training ran on Apple's Metal Performance Shaders (MPS) backend, which gives
 
 \section{Challenges and Solutions}
 
-I ran into several challenges during development that are worth mentioning:
+Here are the main issues I ran into and how I solved them:
 
-\textbf{Numerical stability in DeepFool:} Computing gradients for all classes at once required careful management of the computational graph using \texttt{retain\_graph=True} during backward passes. A small epsilon value of $10^{-8}$ was added to norm computations to prevent division by zero when gradient differences approached zero.
+\textbf{DeepFool numerical issues:} DeepFool computes gradients for all 10 classes in a loop, and you need \texttt{retain\_graph=True} or PyTorch throws away the graph after the first backward pass. I also had to add $10^{-8}$ to the norm denominators because sometimes the gradient differences are basically zero and you get NaN values.
 
-\textbf{Memory management during PGD:} The multi-step PGD attack accumulates a computational graph across iterations if gradients are not properly detached. The solution was to call \texttt{.detach()} on the adversarial images after each projection step, preventing graph accumulation while maintaining gradient flow within each iteration.
+\textbf{PGD memory leak:} If you forget to call \texttt{.detach()} on the adversarial images between PGD iterations, PyTorch keeps building up the computational graph across all steps. With 20 iterations, memory usage explodes. Detaching after each projection step fixed it.
 
-\textbf{Batch normalization during adversarial training:} Generating adversarial examples with the model in training mode caused the batch normalization running statistics to be corrupted by adversarial inputs. The solution was to switch to evaluation mode during attack generation and back to training mode for the actual parameter update.
+\textbf{Batch norm corruption:} Already mentioned above, but switching to \texttt{model.eval()} during PGD generation inside the adversarial training loop was essential. Without it, the running mean and variance get thrown off by the adversarial data.
 
-\textbf{Apple Silicon compatibility:} Some PyTorch operations had limited MPS support at the time of development, requiring occasional fallback to CPU for specific operations and careful testing of numerical equivalence between MPS and CPU results.
+\textbf{MPS backend quirks:} Apple Silicon GPU support in PyTorch is still maturing. Some operations gave slightly different results on MPS vs CPU, and a few were not supported at all. I had to fall back to CPU for certain things and double-check that the numbers matched.
 
 \section{Code Organization}
 
@@ -158,13 +156,11 @@ adversarial-robustness/
 +-- Dockerfile                 # Container for deployment
 \end{verbatim}
 
-The entry points (\texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}) accept command-line arguments to select training mode (standard, adversarial, or both) and evaluation configurations. Configuration parameters are loaded from a YAML file, ensuring reproducibility across experiments.
+You run experiments through \texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}, which take command-line arguments for choosing between standard/adversarial training and setting evaluation parameters. All the hyperparameters live in a YAML config file.
 
 \section{Deployment}
 
-To make the research more tangible, I also built an interactive web application and deployed it online. The frontend is built with Streamlit and lets visitors pick a sample CIFAR-10 image (or upload their own), choose an attack method and perturbation budget, and see what happens to both the standard and adversarially trained models in real time.
-
-The app shows the original image, the adversarial perturbation (amplified so you can actually see it), and the adversarial image side by side, along with confidence scores from both models. I think this kind of visualization really helps make the abstract idea of adversarial vulnerability concrete and easy to understand. The whole thing is containerized with Docker and deployed on HuggingFace Spaces so anyone can try it.
+I also built a web demo so people can actually see what adversarial attacks do. It is a Streamlit app where you pick a CIFAR-10 image (or upload your own), choose an attack and an epsilon value, and see the results from both models instantly. The interface shows the original image next to the perturbation (amplified so it is visible) and the adversarial image, plus the confidence scores from both the standard and robust models. I containerized it with Docker and put it on HuggingFace Spaces.
 
 \section{Summary}
 

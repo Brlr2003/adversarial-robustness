@@ -3,26 +3,26 @@
 
 \section{Introduction}
 
-The fact that deep neural networks can be fooled by tiny input changes has attracted a lot of attention from both the machine learning and security research communities. In this chapter, I review the key ideas and prior work that my thesis builds on. I have organized the literature into three areas: the theoretical understanding of why adversarial examples exist, the different attack methods that have been proposed, and the defenses that researchers have come up with to counter them.
+Before getting into my own work, I need to cover what has already been done in this area. There is a surprisingly large body of research on adversarial examples at this point, touching both the machine learning and security communities. I will go through the theory first (why do adversarial examples exist?), then the attacks (how do you generate them?), and finally the defenses (what can you do about them?).
 
 \section{Theoretical Background}
 
 \subsection{Adversarial Examples and Threat Models}
 
-Szegedy et al.~\cite{szegedy2014intriguing} were the first to report that deep networks can be systematically fooled by small, carefully designed perturbations. They called these ``intriguing properties'' of neural networks, and the discovery was surprising because it went against the assumption that deep learning models pick up robust, generalizable features from their training data.
+The whole thing started with Szegedy et al.~\cite{szegedy2014intriguing}, who found that deep networks can be systematically fooled by small perturbations. They titled their paper ``Intriguing Properties of Neural Networks'' and the finding caught people off guard, because everyone assumed these models were learning meaningful, robust features from data. Turns out that is not quite the case.
 
 Goodfellow et al.~\cite{goodfellow2015explaining} came along shortly after with a more intuitive explanation. They argued that the problem comes from the high-dimensional linear nature of deep networks, and to prove their point they introduced the Fast Gradient Sign Method (FGSM), which can generate adversarial examples with just a single gradient step on the loss function.
 
 \subsection{Threat Model Taxonomy}
 
-Adversarial attacks can be classified along several dimensions:
+There are a few ways to categorize adversarial attacks:
 
 \begin{itemize}
-    \item \textbf{Knowledge of the model:} In \emph{white-box} attacks, the adversary has complete access to the model architecture, parameters, and gradients. In \emph{black-box} attacks, the adversary can only query the model and observe outputs.
-    
-    \item \textbf{Goal:} \emph{Untargeted} attacks aim to cause any misclassification, while \emph{targeted} attacks aim to force classification into a specific target class.
-    
-    \item \textbf{Perturbation constraint:} The perturbation budget is typically measured under norm constraints such as $L_\infty$ (maximum change per pixel), $L_2$ (Euclidean distance), or $L_0$ (number of modified pixels).
+    \item \textbf{How much does the attacker know?} In a \emph{white-box} setting, the attacker has full access to the model, its weights, and its gradients. In a \emph{black-box} setting, they can only feed inputs in and see what comes out.
+
+    \item \textbf{What is the attacker trying to do?} An \emph{untargeted} attack just wants to cause any wrong answer. A \emph{targeted} attack wants to force the model to output a specific wrong class.
+
+    \item \textbf{How big can the perturbation be?} This is usually measured with norm constraints: $L_\infty$ limits the maximum change to any single pixel, $L_2$ limits the total Euclidean distance, and $L_0$ limits how many pixels can be changed at all.
 \end{itemize}
 
 For a more detailed breakdown of these categories and how they apply across domains, the surveys by Yuan et al.~\cite{yuan2019adversarial} and Ren et al.~\cite{ren2020adversarial} are useful references.
@@ -93,33 +93,33 @@ Madry et al.~\cite{madry2018towards} showed that using PGD to generate the adver
 
 \subsection{Gradient Masking and Obfuscation}
 
-Some researchers have tried to defend models by making gradients harder for attackers to use. The idea sounds reasonable, but Athalye et al.~\cite{athalye2018obfuscated} showed that most of these defenses only give a false sense of security. They developed techniques like backward pass differentiable approximation (BPDA) that can get around gradient masking, which was a wake-up call for the community.
+Another line of defense tries to make gradients unusable for the attacker, essentially hiding the gradient information. It sounds clever, but Athalye et al.~\cite{athalye2018obfuscated} put out a paper showing that most gradient masking defenses are basically security theater. They came up with backward pass differentiable approximation (BPDA) and similar tricks that bypass the masking entirely. A lot of defenses that looked promising at the time turned out to be broken.
 
 \subsection{Other Defense Approaches}
 
-Other families of defense methods include:
+Beyond adversarial training and gradient masking, there are a few other families of defenses worth mentioning:
 
 \begin{itemize}
-    \item \textbf{Input preprocessing:} Techniques that transform inputs before classification to remove adversarial perturbations.
-    \item \textbf{Certified defenses:} Methods that provide provable guarantees on robustness within a certain perturbation budget.
-    \item \textbf{Randomized smoothing:} Adding noise to inputs to create certifiably robust classifiers.
+    \item \textbf{Input preprocessing:} Run the input through some transformation (compression, denoising, etc.) before feeding it to the model, hoping to strip out the adversarial noise.
+    \item \textbf{Certified defenses:} These come with mathematical proofs that the model will not change its prediction within a certain perturbation radius. The guarantees are real but usually come at a steep accuracy cost.
+    \item \textbf{Randomized smoothing:} Add Gaussian noise to the input and classify based on the majority vote, which gives you certifiable robustness.
 \end{itemize}
 
 Recent surveys provide a more detailed look at these methods and how they compare~\cite{ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
 
 \section{Research Gap}
 
-Even with all the research that has been done, there are still some gaps that I noticed while going through the literature:
+While reading through the literature, a few things stood out to me as missing:
 
 \begin{enumerate}
-    \item Most papers focus on either attacks or defenses separately. There is not a lot of work that systematically compares multiple attacks side by side under the exact same experimental conditions.
+    \item Papers tend to look at one attack or one defense. I could not find many studies that put FGSM, PGD, and DeepFool side by side on the same model with the same evaluation setup.
 
-    \item The trade-offs between clean accuracy and robust accuracy are reported differently across studies, which makes it hard to get a clear picture of what to expect in practice.
+    \item Different papers report accuracy-robustness trade-offs in different ways, using different epsilon values, different numbers of PGD steps, etc. It is hard to compare across studies.
 
-    \item Implementation details and computational considerations tend to be underreported, which makes it difficult for other researchers to reproduce results.
+    \item A lot of papers skip over the engineering details. They mention using PyTorch and give the hyperparameters, but the actual implementation choices (like how to handle batch normalization during adversarial training) are left out.
 \end{enumerate}
 
-My thesis tries to fill these gaps by implementing and comparing multiple attacks under consistent conditions, evaluating adversarial training as a defense, and documenting the full experimental setup so that others can reproduce the work.
+That is what motivated me to do this thesis. I wanted one consistent study where I implement everything myself, run all the attacks on the same model, and document exactly how I did it.
 
 \section{Summary}
 

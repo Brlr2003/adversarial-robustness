@@ -9,7 +9,7 @@ What makes this problem particularly worrying is that it is not limited to labor
 
 \section{Background and Motivation}
 
-The story of adversarial examples really began with the work of Szegedy et al.~\cite{szegedy2014intriguing}. They were the first to show, in a systematic way, that even well-trained neural networks could be tricked by perturbations that are barely visible. Shortly after, Goodfellow et al.~\cite{goodfellow2015explaining} offered an explanation for why this happens. They argued that it has to do with the linear behavior of networks in high-dimensional spaces, and they introduced the Fast Gradient Sign Method (FGSM), a simple but effective way to generate adversarial examples using gradient information.
+The story of adversarial examples really began with the work of Szegedy et al.~\cite{szegedy2014intriguing}. They were the first to show, in a systematic way, that even well-trained neural networks could be tricked by perturbations that are barely visible. Shortly after, Goodfellow et al.~\cite{goodfellow2015explaining} offered an explanation for why this happens. Their argument was that deep networks behave too linearly in high-dimensional spaces, which makes them easy to exploit. They backed this up by introducing the Fast Gradient Sign Method (FGSM), which generates adversarial examples using just one gradient computation.
 
 My motivation for this research comes from a straightforward observation: if we are going to trust deep learning models in applications like autonomous vehicles, medical diagnosis, or security systems, we need to understand how fragile they really are. Studying how adversarial attacks work is, in my view, the necessary first step before we can build models that are genuinely robust.
 
@@ -35,13 +35,13 @@ I focus specifically on evasion attacks at test time and use image classificatio
 
 \section{Research Objectives}
 
-The goal of this research is to connect the theoretical side of adversarial attacks with hands-on implementation and experimentation. More specifically, I set out to:
+A lot of the existing work on adversarial attacks stays at the theoretical level, so I wanted to get my hands dirty with actual implementations and see the results for myself. My objectives were:
 
 \begin{itemize}
-    \item Implement and evaluate several well-known adversarial attacks (FGSM, BIM/PGD, DeepFool) on standard benchmark datasets.
-    \item Measure how vulnerable convolutional neural networks are to these attacks under different perturbation constraints.
-    \item Apply adversarial training as a defense and see how much it actually helps in terms of model robustness.
-    \item Look at the trade-offs between clean accuracy and robust accuracy across different configurations.
+    \item Build working implementations of FGSM, BIM/PGD, and DeepFool from scratch and test them on MNIST and CIFAR-10.
+    \item Run these attacks with different perturbation budgets and see exactly how much damage they do to a convolutional neural network.
+    \item Train a model with adversarial training and measure whether the robustness gains are worth the accuracy cost.
+    \item Put all the numbers side by side so I can see the clean accuracy vs. robust accuracy trade-off clearly.
 \end{itemize}
 
 \section{Contributions}
@@ -56,14 +56,12 @@ The main contributions of this thesis are:
 
 \section{Thesis Organization}
 
-The rest of this thesis is organized as follows:
+\textbf{Chapter 2} is a literature review where I go through the theory behind adversarial examples, the main attack algorithms people have come up with, and the defenses that exist.
 
-\textbf{Chapter 2} reviews the existing literature on adversarial examples, covering the theoretical foundations, the different types of attacks, and the defenses that have been proposed so far.
+\textbf{Chapter 3} covers my methodology: the math behind each attack, which datasets and models I used, and how I set up the experiments.
 
-\textbf{Chapter 3} explains the methodology I used, including the mathematical formulation of each attack, the datasets and model architectures, and how I designed the experiments.
+\textbf{Chapter 4} is about the implementation itself. I explain the code structure, the engineering decisions I made, and what tools I used.
 
-\textbf{Chapter 4} goes into the implementation details: how the attack algorithms and training procedures were coded, the software architecture, and the development environment.
+\textbf{Chapter 5} has all the experimental results. I report attack success rates, perturbation sizes, and the adversarial training numbers.
 
-\textbf{Chapter 5} presents the experimental results, with numbers on attack success rates, perturbation sizes, and how well adversarial training works as a defense.
-
-\textbf{Chapter 6} wraps things up with conclusions, a discussion of limitations, and ideas for future work.
+\textbf{Chapter 6} is where I discuss what it all means, what the limitations are, and what I would do differently or explore next.
