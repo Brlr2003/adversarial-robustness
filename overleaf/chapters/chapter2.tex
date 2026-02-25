@@ -3,29 +3,29 @@
 
 \section{Introduction}
 
-Before getting into my own work, I need to cover what has already been done in this area. There is a surprisingly large body of research on adversarial examples at this point, touching both the machine learning and security communities. I will go through the theory first (why do adversarial examples exist?), then the attacks (how do you generate them?), and finally the defenses (what can you do about them?).
+There is by now a large and growing literature on adversarial examples, spanning machine learning and computer security. Before describing my own experiments, I want to review the key ideas and results that form the basis for this work. The structure here follows a natural progression: first the theory (why adversarial examples exist), then the attacks (how to construct them), and then the defenses (what can be done about them).
 
 \section{Theoretical Background}
 
 \subsection{Adversarial Examples and Threat Models}
 
-The whole thing started with Szegedy et al.~\cite{szegedy2014intriguing}, who found that deep networks can be systematically fooled by small perturbations. They titled their paper ``Intriguing Properties of Neural Networks'' and the finding caught people off guard, because everyone assumed these models were learning meaningful, robust features from data. Turns out that is not quite the case.
+Szegedy et al.~\cite{szegedy2014intriguing} discovered that deep neural networks are vulnerable to small, seemingly random perturbations of their inputs. The paper was titled ``Intriguing Properties of Neural Networks,'' and the result genuinely surprised people --- the assumption had been that these networks learn robust, meaningful feature representations. That assumption turned out to be wrong, or at the very least incomplete.
 
-Goodfellow et al.~\cite{goodfellow2015explaining} came along shortly after with a more intuitive explanation. They argued that the problem comes from the high-dimensional linear nature of deep networks, and to prove their point they introduced the Fast Gradient Sign Method (FGSM), which can generate adversarial examples with just a single gradient step on the loss function.
+Shortly after, Goodfellow et al.~\cite{goodfellow2015explaining} offered what remains one of the more compelling explanations. They argued that the vulnerability stems from the high-dimensional linear nature of deep networks. In high dimensions, even a small per-coordinate perturbation, when applied consistently in the direction of the gradient, accumulates into a large change in the network's output. To make this argument concrete, they introduced FGSM, which constructs adversarial examples with a single gradient computation.
 
 \subsection{Threat Model Taxonomy}
 
-There are a few ways to categorize adversarial attacks:
+Adversarial attacks can be categorized along several axes:
 
 \begin{itemize}
-    \item \textbf{How much does the attacker know?} In a \emph{white-box} setting, the attacker has full access to the model, its weights, and its gradients. In a \emph{black-box} setting, they can only feed inputs in and see what comes out.
+    \item \textbf{Attacker's knowledge.} In \emph{white-box} attacks, the adversary has complete access to model weights and can compute gradients. In \emph{black-box} attacks, only input-output access is available.
 
-    \item \textbf{What is the attacker trying to do?} An \emph{untargeted} attack just wants to cause any wrong answer. A \emph{targeted} attack wants to force the model to output a specific wrong class.
+    \item \textbf{Attacker's goal.} \emph{Untargeted} attacks aim to cause any misclassification. \emph{Targeted} attacks aim to force a specific wrong output class.
 
-    \item \textbf{How big can the perturbation be?} This is usually measured with norm constraints: $L_\infty$ limits the maximum change to any single pixel, $L_2$ limits the total Euclidean distance, and $L_0$ limits how many pixels can be changed at all.
+    \item \textbf{Perturbation constraints.} Typically measured by $L_p$ norms: $L_\infty$ bounds the maximum change to any single pixel, $L_2$ bounds the Euclidean magnitude of the perturbation, and $L_0$ counts how many pixels are modified.
 \end{itemize}
 
-For a more detailed breakdown of these categories and how they apply across domains, the surveys by Yuan et al.~\cite{yuan2019adversarial} and Ren et al.~\cite{ren2020adversarial} are useful references.
+Yuan et al.~\cite{yuan2019adversarial} and Ren et al.~\cite{ren2020adversarial} provide thorough surveys covering these categories and how they apply across different problem domains.
 
 \section{Related Work}
 
@@ -33,94 +33,94 @@ For a more detailed breakdown of these categories and how they apply across doma
 
 \subsubsection{Fast Gradient Sign Method (FGSM)}
 
-FGSM~\cite{goodfellow2015explaining} is one of the simplest and most well-known attacks. It works by taking a single step in the direction of the gradient of the loss with respect to the input:
+FGSM~\cite{goodfellow2015explaining} remains one of the simplest attacks in the literature. Given an input $x$ with true label $y$, it computes:
 
 \begin{equation}
     x^{adv} = x + \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y))
     \label{eq:fgsm}
 \end{equation}
 
-where $x$ is the original input, $\epsilon$ controls how large the perturbation can be, $J$ is the loss function, $\theta$ represents the model parameters, and $y$ is the true label. FGSM is fast to compute since it only needs one forward and one backward pass, but the trade-off is that it does not always find the strongest possible adversarial example.
+Here $J$ is the loss function, $\theta$ the model parameters, and $\epsilon$ the perturbation budget. The attack requires only one forward pass and one backward pass, which makes it very fast. The downside is that it only takes a single step in the gradient direction, so it generally does not find the worst-case perturbation within the allowed budget.
 
 \subsubsection{Basic Iterative Method (BIM) / Projected Gradient Descent (PGD)}
 
-To get around FGSM's limitation, Kurakin et al.~\cite{kurakin2016adversarialscale} proposed the Basic Iterative Method (BIM), which simply applies FGSM multiple times with a smaller step size:
+Kurakin et al.~\cite{kurakin2016adversarialscale} proposed a natural extension: apply FGSM iteratively with a smaller step size.
 
 \begin{equation}
     x^{adv}_{t+1} = \text{Clip}_{x,\epsilon}\{x^{adv}_t + \alpha \cdot \text{sign}(\nabla_x J(\theta, x^{adv}_t, y))\}
     \label{eq:bim}
 \end{equation}
 
-Madry et al.~\cite{madry2018towards} later formalized this idea as Projected Gradient Descent (PGD), which adds a random starting point within the $\epsilon$-ball. PGD has since become one of the most widely used attacks for benchmarking model robustness, and it is generally considered the strongest first-order attack available.
+Madry et al.~\cite{madry2018towards} later cast this procedure as Projected Gradient Descent on the inner maximization problem, with an additional random initialization step. Their formulation of PGD has since become the de facto standard for evaluating adversarial robustness. It is generally regarded as the strongest first-order attack --- meaning that if a model is robust to PGD, there is reasonable evidence that it is robust to any attack that only uses gradient information.
 
 \subsection{Optimization-Based Attacks}
 
 \subsubsection{DeepFool}
 
-Moosavi-Dezfooli et al.~\cite{moosavidezfooli2016deepfool} took a different approach with DeepFool. Instead of using a fixed perturbation budget, DeepFool iteratively linearizes the classifier around the current point and finds the closest decision boundary. It then computes the smallest perturbation needed to cross that boundary. The result is that DeepFool tends to produce much smaller perturbations than FGSM while still successfully fooling the model.
+Moosavi-Dezfooli et al.~\cite{moosavidezfooli2016deepfool} approached the problem differently. Rather than perturbing within a fixed budget, DeepFool iteratively approximates the nearest decision boundary by linearizing the classifier, then computes the minimum perturbation needed to cross it. The perturbations it produces are typically much smaller than those from FGSM, yet they still succeed in changing the prediction. This makes DeepFool particularly useful for measuring the \emph{robustness radius} of a model --- that is, how far data points sit from the nearest decision boundary.
 
 \subsubsection{Carlini-Wagner (C\&W) Attack}
 
-Carlini and Wagner~\cite{carlini2017towards} approached the problem from a more formal optimization angle:
+Carlini and Wagner~\cite{carlini2017towards} formulated adversarial example generation as a formal optimization problem:
 
 \begin{equation}
     \min_\delta \|\delta\|_p + c \cdot f(x + \delta)
     \label{eq:cw}
 \end{equation}
 
-where $f$ is an objective function that encourages misclassification. What made the C\&W attack particularly important is that it was able to break several defenses that were thought to be effective at the time. It is still one of the strongest attacks out there, although it takes significantly more computation than gradient-based methods.
+where $f$ encourages misclassification. The C\&W attack proved especially important because it broke several defenses that had appeared effective against weaker attacks. It remains among the strongest attacks available, though its computational cost is considerably higher than gradient-based methods.
 
 \subsubsection{Universal Adversarial Perturbations}
 
-In a somewhat unsettling finding, Moosavi-Dezfooli et al.~\cite{moosavidezfooli2017universal} showed that you can find a single perturbation vector that fools a classifier on most inputs. This means the vulnerability is not just about individual images but rather something more systematic about how these networks work.
+Moosavi-Dezfooli et al.~\cite{moosavidezfooli2017universal} showed something particularly striking: there exist single perturbation vectors that, when added to almost any input, cause misclassification. This is a strong result. It implies that the vulnerability is not an artifact of individual inputs but something structural about the learned representations.
 
 \subsection{Black-Box Attacks and Transferability}
 
-Papernot et al.~\cite{papernot2017practical} explored the idea of black-box attacks using substitute models. The basic idea is that if you can train your own model to mimic the target, you can craft adversarial examples on your model and they will often transfer to the target. This transferability property has serious security implications because it means an attacker does not actually need access to the target model's internals to fool it.
+Papernot et al.~\cite{papernot2017practical} demonstrated that black-box attacks are feasible through a substitute model approach. The idea: train a local model to approximate the target, generate adversarial examples against the local model, and rely on the fact that they transfer. And they do transfer, surprisingly often. This transferability phenomenon has significant security implications --- it means that white-box access is not a prerequisite for mounting effective attacks.
 
 \section{Defense Mechanisms}
 
 \subsection{Adversarial Training}
 
-The most straightforward defense is adversarial training, where you include adversarial examples in the training process so the model learns to handle them~\cite{goodfellow2015explaining,kurakin2016adversarialscale,madry2018towards}. Formally, the training objective becomes a min-max problem:
+The most conceptually straightforward defense is adversarial training: augment the training data with adversarial examples so that the model learns to classify them correctly~\cite{goodfellow2015explaining,kurakin2016adversarialscale,madry2018towards}. The training objective becomes a min-max problem:
 
 \begin{equation}
     \min_\theta \mathbb{E}_{(x,y) \sim \mathcal{D}} \left[ \max_{\|\delta\| \leq \epsilon} J(\theta, x + \delta, y) \right]
     \label{eq:adv_training}
 \end{equation}
 
-Madry et al.~\cite{madry2018towards} showed that using PGD to generate the adversarial examples during training leads to models with much better robustness. One downside is the computational cost, since you need to run PGD at every training step. Shafahi et al.~\cite{shafahi2019adversarialfree} addressed this with ``Adversarial Training for Free,'' a method that reuses gradient computations to cut down the overhead.
+Madry et al.~\cite{madry2018towards} showed that solving the inner maximization with PGD during training yields substantially more robust models than using FGSM alone. The main drawback is cost: you need to run a multi-step attack at every training iteration, which increases training time by a factor of roughly $5$--$10\times$. Shafahi et al.~\cite{shafahi2019adversarialfree} later proposed ``Adversarial Training for Free,'' which recycles gradient computations to reduce this overhead.
 
 \subsection{Gradient Masking and Obfuscation}
 
-Another line of defense tries to make gradients unusable for the attacker, essentially hiding the gradient information. It sounds clever, but Athalye et al.~\cite{athalye2018obfuscated} put out a paper showing that most gradient masking defenses are basically security theater. They came up with backward pass differentiable approximation (BPDA) and similar tricks that bypass the masking entirely. A lot of defenses that looked promising at the time turned out to be broken.
+A different line of defense attempts to deny the attacker useful gradient information --- essentially, making gradients uninformative or zero. This looked promising initially, but Athalye et al.~\cite{athalye2018obfuscated} showed convincingly that these defenses provide a false sense of security. Their paper introduced backward pass differentiable approximation (BPDA) and related techniques that circumvent gradient masking. Many defenses that had appeared robust turned out to be broken once evaluated with these stronger attacks.
 
 \subsection{Other Defense Approaches}
 
-Beyond adversarial training and gradient masking, there are a few other families of defenses worth mentioning:
+Several additional defense families have been explored:
 
 \begin{itemize}
-    \item \textbf{Input preprocessing:} Run the input through some transformation (compression, denoising, etc.) before feeding it to the model, hoping to strip out the adversarial noise.
-    \item \textbf{Certified defenses:} These come with mathematical proofs that the model will not change its prediction within a certain perturbation radius. The guarantees are real but usually come at a steep accuracy cost.
-    \item \textbf{Randomized smoothing:} Add Gaussian noise to the input and classify based on the majority vote, which gives you certifiable robustness.
+    \item \textbf{Input preprocessing:} Apply transformations to the input --- JPEG compression, denoising, etc. --- before classification, with the hope of removing adversarial perturbations.
+    \item \textbf{Certified defenses:} Provide mathematical guarantees that the model's prediction will not change within some perturbation radius. The guarantees are formal, but they generally come with significant accuracy penalties.
+    \item \textbf{Randomized smoothing:} Classify based on a majority vote over noisy copies of the input. This yields certifiable robustness guarantees with a probabilistic flavor.
 \end{itemize}
 
-Recent surveys provide a more detailed look at these methods and how they compare~\cite{ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
+For a broader treatment of these and other approaches, see the surveys by Ren et al.~\cite{ren2020adversarial}, Chakraborty et al.~\cite{chakraborty2018survey}, Zhou et al.~\cite{zhou2022adversarial}, and Macas et al.~\cite{macas2024adversarial}.
 
 \section{Research Gap}
 
-While reading through the literature, a few things stood out to me as missing:
+In reviewing the literature, a few gaps became apparent to me:
 
 \begin{enumerate}
-    \item Papers tend to look at one attack or one defense. I could not find many studies that put FGSM, PGD, and DeepFool side by side on the same model with the same evaluation setup.
+    \item Most papers focus on a single attack or a single defense in isolation. Comparisons that put FGSM, PGD, and DeepFool side by side, on the same model, with the same evaluation protocol, are surprisingly rare.
 
-    \item Different papers report accuracy-robustness trade-offs in different ways, using different epsilon values, different numbers of PGD steps, etc. It is hard to compare across studies.
+    \item Accuracy--robustness trade-offs are reported using different epsilon values, different PGD step counts, and different evaluation procedures, which makes it hard to compare results across papers.
 
-    \item A lot of papers skip over the engineering details. They mention using PyTorch and give the hyperparameters, but the actual implementation choices (like how to handle batch normalization during adversarial training) are left out.
+    \item Implementation details are often left out. Authors mention PyTorch and list hyperparameters, but practical issues --- like how to handle batch normalization statistics during adversarial training --- tend not to be discussed.
 \end{enumerate}
 
-That is what motivated me to do this thesis. I wanted one consistent study where I implement everything myself, run all the attacks on the same model, and document exactly how I did it.
+These gaps motivated the present work. I wanted a single, self-contained study where everything is implemented from scratch, evaluated consistently, and documented in enough detail that someone else could reproduce it.
 
 \section{Summary}
 
-Looking at the literature as a whole, it is clear that adversarial vulnerability is not a bug that can be easily patched but rather something fundamental about how deep neural networks work. The attacks range from simple one-step gradient methods to sophisticated optimization-based approaches, and on the defense side, adversarial training is still the most reliable option even though it comes with real computational costs and accuracy trade-offs. The following chapters build on this foundation with my own implementations and experiments.
+The literature makes clear that adversarial vulnerability is not some minor edge case but rather a fundamental property of how deep neural networks operate. Attacks range from simple one-step gradient methods (FGSM) to sophisticated optimization procedures (C\&W), and on the defense side, adversarial training remains the most empirically reliable option despite its computational cost and the accuracy penalty it incurs. The following chapters describe my own implementations and experiments that build on this foundation.

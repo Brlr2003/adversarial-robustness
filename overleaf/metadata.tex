@@ -33,9 +33,9 @@
 
 % Abstract (English)
 \abstract{
-Deep learning models achieve impressive performance on tasks like image classification, but they have a serious weakness: small, carefully crafted changes to an input, often invisible to the human eye, can cause these models to misclassify with high confidence. These manipulated inputs are known as adversarial examples, and their existence raises real concerns for systems used in autonomous driving, biometrics, and cybersecurity.
+Deep learning models can be fooled by adversarial examples --- inputs with small, carefully chosen perturbations that are imperceptible to humans but cause confident misclassification. This vulnerability has direct implications for safety-critical applications such as autonomous driving, biometric authentication, and cybersecurity.
 
-This thesis presents a practical study of adversarial attacks on image classification models. A ResNet-18 convolutional neural network is trained on the CIFAR-10 benchmark dataset, and three white-box attacks (FGSM, PGD, DeepFool) are implemented and compared. The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. PGD-based adversarial training is then applied, producing a robust model that maintains 45.1\% accuracy under the same attack while losing 10.2 percentage points of clean accuracy. DeepFool analysis shows that the standard model's decision boundaries are on average only 0.248 $L_2$ distance from the data points, while adversarial training pushes this distance to 0.892. These results confirm how severe adversarial vulnerability is in deep neural networks and show that adversarial training is an effective and practical defense.
+This thesis investigates adversarial attacks on image classifiers through hands-on implementation and experimentation. A ResNet-18 is trained on CIFAR-10, and three white-box attacks --- FGSM, PGD, and DeepFool --- are implemented from scratch and evaluated. The standard model achieves 94.1\% clean accuracy; a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. PGD-based adversarial training yields a robust model that retains 45.1\% accuracy under the same attack, at the cost of 10.2 percentage points in clean accuracy. DeepFool reveals that the standard model's decision boundaries sit only 0.248 $L_2$ distance from the data on average; adversarial training moves them to 0.892. These findings quantify both the severity of adversarial vulnerability in deep networks and the effectiveness of adversarial training as a defense.
 }
 
 % Keywords (English)
@@ -53,11 +53,11 @@ Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër model
 
 % Acknowledgments
 \acknowledgments{
-I would like to express my sincere gratitude to my supervisor, Assoc. Prof. Dr. Arban Uka, for his invaluable guidance, support, and encouragement throughout my research. The expert knowledge which he possessed about the subject matter together with his constructive criticism created the foundation for this research project.
+I owe a great deal to my supervisor, Assoc. Prof. Dr. Arban Uka, who guided this work from start to finish. His deep knowledge of the subject and his willingness to challenge my ideas at every stage shaped both the research and my thinking about it. I am grateful for his patience and for the many hours he spent discussing this work with me.
 
-I thank my family for their ongoing support and understanding during my academic studies, and I also appreciate the academic atmosphere which my friends and colleagues at Epoka University created.
+I also want to thank my family, who put up with a lot during my studies --- late nights, missed gatherings, and the general stress of thesis writing. Their support made all of this possible. My friends and colleagues at Epoka University made the experience more enjoyable than it otherwise would have been.
 
-I want to express my gratitude to Epoka University for granting me the chance to complete my master's degree and for offering the resources needed to conduct my research.
+Finally, I am thankful to Epoka University for giving me the opportunity to pursue this degree and for providing the resources that made the research possible.
 }
 
 % Dedication (optional - uncomment if needed)

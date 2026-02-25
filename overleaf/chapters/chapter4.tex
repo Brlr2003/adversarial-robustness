@@ -3,35 +3,35 @@
 
 \section{Introduction}
 
-Now I get to the actual code. This chapter covers the implementation: the attack algorithms, the training loops, and the web demo. Everything is in PyTorch. I wrote FGSM, PGD, and DeepFool from scratch, built two training pipelines (standard and adversarial), and put together a Streamlit app on HuggingFace Spaces where people can try the attacks live.
+This chapter is about the code. Everything was written in PyTorch --- the model, the three attacks, both training pipelines, and a web demo for interactive visualization. FGSM, PGD, and DeepFool were all implemented from scratch rather than using an existing adversarial ML library. I also built a Streamlit application, deployed on HuggingFace Spaces, that lets users run attacks in real time and see the results.
 
-Turning the methodology from the previous chapter into working software meant dealing with memory issues, numerical edge cases, and PyTorch-specific quirks. MLflow handled the experiment tracking.
+Getting from the methodology in the previous chapter to working software involved dealing with a number of practical issues: memory management in iterative attacks, numerical stability in DeepFool, batch normalization behavior during adversarial training, and quirks of Apple's MPS backend. MLflow was used throughout for experiment tracking.
 
 \section{System Architecture}
 
-The code is split into five modules. The \textbf{Model Module} has the ResNet-18 adapted for CIFAR-10. The \textbf{Attack Module} has FGSM, PGD, and DeepFool, all with the same function signature so I can swap them freely. The \textbf{Training Module} runs standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} is the Streamlit demo.
+The codebase is organized into five modules. The \textbf{Model Module} contains the CIFAR-10-adapted ResNet-18. The \textbf{Attack Module} provides FGSM, PGD, and DeepFool, each with the same function signature to make them interchangeable. The \textbf{Training Module} handles both standard and adversarial training loops with MLflow logging. The \textbf{Evaluation Module} computes all robustness metrics. The \textbf{Frontend Module} is the Streamlit demo.
 
-I kept things modular on purpose. If I want to add a fourth attack later, I just write one new file and plug it in without changing anything else.
+I deliberately kept things modular. Adding a new attack means writing a single Python file that conforms to the existing interface --- nothing else needs to change.
 
 \section{Implementation Details}
 
 \subsection{Model Implementation}
 
-The model is a ResNet-18~\cite{he2016deep}, but I had to modify it because the original was built for $224 \times 224$ ImageNet images and CIFAR-10 only has $32 \times 32$. With the original first layer (a $7 \times 7$ conv with stride 2 followed by max pooling), the feature maps shrink way too fast and you lose most of the spatial information before the residual blocks even start. I swapped in a $3 \times 3$ conv with stride 1 and padding 1, and got rid of the max pooling. That fixed it.
+The backbone is a ResNet-18~\cite{he2016deep}. The original architecture assumes $224 \times 224$ inputs (ImageNet), and CIFAR-10 images are only $32 \times 32$. The standard first layer --- a $7 \times 7$ convolution with stride 2, followed by max pooling --- would shrink the spatial dimensions too aggressively. By the time the input reaches the residual blocks, most spatial information would already be gone. So I replaced the first layer with a $3 \times 3$ convolution, stride 1, padding 1, and removed the max pooling entirely. This is a well-known modification for CIFAR-scale inputs.
 
-The network has four residual layers, each with two BasicBlock modules. Each BasicBlock does two $3 \times 3$ convolutions with batch normalization and ReLU, and there is a skip connection that adds the input directly to the output (that is the ``residual'' part). When the spatial dimensions need to shrink (in layers 2 through 4), I use a $1 \times 1$ convolution in the shortcut path to match the new dimensions. The channel count goes from 64 to 128 to 256 to 512 across the four layers. At the end, adaptive average pooling brings everything down to $1 \times 1$ spatially, and a fully connected layer outputs 10 class logits. In total the model has about 11.17 million parameters.
+The rest of the architecture follows the standard ResNet-18 design: four residual layers, each containing two BasicBlock modules. A BasicBlock consists of two $3 \times 3$ convolutions with batch normalization and ReLU, plus a skip connection. When downsampling occurs (layers 2 through 4), a $1 \times 1$ convolution on the shortcut path matches the spatial and channel dimensions. Channel counts progress as 64, 128, 256, 512 across the four layers. At the end, adaptive average pooling reduces the spatial dimensions to $1 \times 1$, and a linear layer maps to 10 class logits. The total parameter count is approximately 11.17 million.
 
-For weight initialization I used Kaiming normal for the convolutional layers and constant initialization for the batch normalization layers, which is the standard approach for ResNets.
+Weight initialization: Kaiming normal for convolutional layers, constant initialization for batch normalization parameters. This is standard for ResNets.
 
-One design decision that I want to highlight is about input normalization. I kept images in the $[0, 1]$ pixel range and did not apply the usual channel-wise normalization (subtracting the mean and dividing by the standard deviation). I did this on purpose because adversarial perturbation budgets ($\epsilon$) are defined in pixel space. If I had applied normalization, I would have needed to adjust the epsilon values to account for the scaling, which adds complexity for no real benefit. By keeping inputs in $[0, 1]$, an $\epsilon = 8/255 \approx 0.031$ directly means a maximum per-pixel change of 8 intensity levels out of 255, which is the standard value used in the adversarial robustness literature~\cite{madry2018towards}.
+One deliberate design choice: I did \emph{not} apply per-channel input normalization (mean subtraction and standard deviation scaling). Adversarial perturbation budgets ($\epsilon$) are defined in pixel space. If you normalize the inputs, then $\epsilon = 8/255$ no longer corresponds to 8 intensity levels per pixel --- you would need to rescale the budget to account for the normalization, which complicates things for no real gain. By keeping inputs in $[0, 1]$, the correspondence between $\epsilon$ and actual pixel changes is direct and transparent. This follows the convention used in the adversarial robustness literature, including Madry et al.~\cite{madry2018towards}.
 
 \subsection{Data Loading and Preprocessing}
 
-I loaded CIFAR-10 using torchvision. For training data, I applied some standard augmentations: random cropping with 4 pixels of padding and random horizontal flips, then conversion to tensors. For the test set I only converted to tensors with no augmentation. Batches of 128 images were loaded using PyTorch's DataLoader with 4 worker processes and pinned memory to speed up GPU transfers.
+CIFAR-10 was loaded via torchvision. Training data used standard augmentation: random crops with 4 pixels of padding, random horizontal flips, and conversion to tensors. Test data was only converted to tensors --- no augmentation. Batch size was 128 throughout, with 4 DataLoader workers and pinned memory enabled for faster GPU transfers.
 
 \subsection{FGSM Attack Implementation}
 
-I implemented the FGSM attack following Goodfellow et al.~\cite{goodfellow2015explaining}, as shown in Algorithm~\ref{alg:fgsm}. It takes in a batch of images with their true labels, computes the cross-entropy loss, runs backpropagation to get the gradients with respect to the input, and generates the adversarial examples in one step.
+The FGSM implementation follows Goodfellow et al.~\cite{goodfellow2015explaining} directly. Algorithm~\ref{alg:fgsm} shows the procedure.
 
 \begin{algorithm}[htbp]
 \caption{Fast Gradient Sign Method (FGSM)}
@@ -47,11 +47,11 @@ I implemented the FGSM attack following Goodfellow et al.~\cite{goodfellow2015ex
 \end{algorithmic}
 \end{algorithm}
 
-In practice, I set \texttt{requires\_grad = True} on the input tensor before the forward pass so that PyTorch tracks the gradients with respect to the input. After backpropagation, I take the sign of the gradient element-wise and scale it by $\epsilon$. The resulting adversarial images get clamped to $[0, 1]$ so they stay valid. Everything runs on full batches for efficiency.
+In PyTorch, this means setting \texttt{requires\_grad = True} on the input tensor, computing the cross-entropy loss, calling \texttt{backward()}, and then taking the sign of the resulting gradient. The adversarial image is clamped to $[0,1]$ to remain a valid image. The whole thing operates on full batches.
 
 \subsection{PGD Attack Implementation}
 
-PGD is essentially FGSM applied multiple times with smaller steps, as described by Madry et al.~\cite{madry2018towards}. I show the full procedure in Algorithm~\ref{alg:pgd}. After each gradient step, the result gets projected back into the $L_\infty$ $\epsilon$-ball around the original input so the perturbation stays within budget.
+PGD extends FGSM by iterating the gradient step and projecting back onto the constraint set after each update. The full procedure is in Algorithm~\ref{alg:pgd}.
 
 \begin{algorithm}[htbp]
 \caption{Projected Gradient Descent (PGD) Attack}
@@ -71,33 +71,33 @@ PGD is essentially FGSM applied multiple times with smaller steps, as described 
 \end{algorithmic}
 \end{algorithm}
 
-The attack starts from a random point within the $\epsilon$-ball, which helps it find different adversarial examples and avoid getting stuck in local optima. At each step, I compute the gradient of the cross-entropy loss with respect to the current adversarial image and take a step of size $\alpha$ in the sign direction. The projection step clamps the perturbation $x^{adv} - x$ to $[-\epsilon, \epsilon]$ element-wise to satisfy the $L_\infty$ constraint, and then the whole thing gets clamped to $[0, 1]$ for valid pixel values. One thing I had to be careful about is detaching the gradients after each iteration, otherwise the computational graph keeps growing and you run out of memory fast.
+Random initialization within the $\epsilon$-ball helps explore different adversarial directions and avoids getting stuck. The projection step clamps the perturbation $x^{adv} - x$ to $[-\epsilon, \epsilon]$ element-wise, enforcing the $L_\infty$ constraint. A final clamp to $[0,1]$ ensures pixel validity.
+
+One thing that tripped me up initially: you \emph{must} detach the adversarial tensor from the computation graph after each iteration. Without detaching, PyTorch accumulates the entire computational graph across all $T$ steps, and memory usage grows quickly. With 20 iterations, this caused out-of-memory errors until I added explicit \texttt{.detach()} calls after each projection step.
 
 \subsection{DeepFool Implementation}
 
-DeepFool~\cite{moosavi2016deepfool} works quite differently from the other two attacks. Instead of using a fixed perturbation budget, it finds the smallest perturbation that will change the model's prediction. It does this by figuring out which decision boundary is closest and pushing the input just past it.
+DeepFool~\cite{moosavi2016deepfool} is fundamentally different from the other two attacks. It does not work with a fixed perturbation budget. Instead, it finds the smallest perturbation that changes the model's prediction by iteratively estimating the nearest decision boundary.
 
-Because each image has its own closest decision boundary, DeepFool has to process images one at a time rather than in batches. At each iteration, it computes the gradient of every class logit with respect to the input. For each class $k$ that is not the original prediction, it calculates how far away the corresponding decision boundary is using a linearized approximation:
+Since each image has its own nearest decision boundary, DeepFool processes images one at a time --- no batching. At each iteration, the algorithm computes the gradient of every class logit with respect to the input. For each class $k \neq \hat{k}$ (where $\hat{k}$ is the current predicted class), it estimates the distance to the corresponding decision boundary via a linear approximation:
 
 \begin{equation}
     d_k = \frac{|f_k(x) - f_{\hat{k}}(x)|}{\|w_k\|_2}
 \end{equation}
 
-where $\hat{k}$ is the original predicted class and $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$ is the difference in gradients. The algorithm picks the class with the smallest distance and computes the minimum perturbation to cross that boundary. This keeps going until the prediction changes or the iteration limit is hit. I also apply an overshoot of 0.02 to the total perturbation to make sure the input actually crosses the boundary and does not just land right on it.
+where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The algorithm then takes the smallest $d_k$, computes the corresponding minimum perturbation, and applies it. The process repeats until either the prediction changes or the iteration limit is reached. I apply an overshoot factor of 0.02 --- scaling the total perturbation by $1.02$ --- to ensure the perturbed input actually crosses the decision boundary rather than landing exactly on it.
 
-The per-image processing makes DeepFool quite a bit slower than the batched attacks, but the payoff is that it finds near-minimal perturbations. This gives you a useful measure of each sample's \textit{robustness radius}, which is essentially how far the input sits from the nearest decision boundary.
+Per-image processing makes DeepFool substantially slower than the batched attacks. But the payoff is that it produces near-minimal perturbations, which directly measure each sample's \textit{robustness radius} --- how far it sits from the nearest decision boundary.
 
 \subsection{Adversarial Training Implementation}
 
-For adversarial training I followed the PGD-based approach from Madry et al.~\cite{madry2018towards}. The idea is simple in principle: at each training step, generate PGD adversarial examples from the current mini-batch and train the model on those instead of the clean inputs.
+Adversarial training follows the PGD-based procedure from Madry et al.~\cite{madry2018towards}. At each training step, PGD adversarial examples are generated from the current mini-batch, and the model is then trained on these adversarial inputs rather than the clean ones.
 
-One thing that caused me trouble was batch normalization. The issue is that when you generate adversarial examples, you do a forward pass through the model, and if the model is in training mode, those adversarial inputs update the batch norm running statistics. That corrupts them. The fix is to call \texttt{model.eval()} before generating the attack and \texttt{model.train()} after, before the actual weight update. Took me a while to figure out why my adversarial training was not converging until I realized this was the problem.
+There is a subtle but important issue with batch normalization that I had to learn the hard way. When generating adversarial examples, you run a forward pass through the model. If the model is in training mode during this forward pass, the adversarial inputs corrupt the batch normalization running statistics (running mean and variance). The fix: switch to \texttt{model.eval()} before the PGD attack, then back to \texttt{model.train()} for the actual parameter update. Without this, adversarial training simply does not converge --- the model oscillates and never achieves good robust accuracy. I spent some time debugging this before identifying the cause.
 
-For the optimizer I used SGD with momentum (0.9) and weight decay ($5 \times 10^{-4}$), with a cosine annealing schedule starting from a learning rate of 0.1. I saved model checkpoints based on PGD robustness accuracy rather than clean accuracy, since the whole point of adversarial training is to maximize robustness. All the metrics (loss, clean accuracy, robust accuracy, learning rate) get logged to MLflow at each epoch so I can compare experiments easily.
+Optimizer: SGD with momentum 0.9, weight decay $5 \times 10^{-4}$, initial learning rate 0.1, cosine annealing schedule. Model checkpoints were saved based on PGD robustness accuracy on the test set, not clean accuracy --- robustness is the whole point. All metrics were logged to MLflow at each epoch.
 
 \section{Development Environment}
-
-I developed and trained everything using the following setup:
 
 \begin{itemize}
     \item \textbf{Operating System:} macOS (Apple Silicon)
@@ -108,23 +108,23 @@ I developed and trained everything using the following setup:
     \item \textbf{Deployment:} Docker, HuggingFace Spaces
 \end{itemize}
 
-All training ran on Apple's Metal Performance Shaders (MPS) backend, which gives GPU acceleration on Apple Silicon. Standard training for 50 epochs took about 55 minutes, which is reasonable. Adversarial training, on the other hand, took about 4.5 hours because of the overhead from generating PGD attacks at every single training step (roughly 7$\times$ slower per epoch).
+All training used Apple's MPS backend for GPU acceleration. Standard training (50 epochs) took about 55 minutes. Adversarial training took roughly 4.5 hours --- approximately $7\times$ longer per epoch, because every training step requires running a 7-step PGD attack.
 
 \section{Challenges and Solutions}
 
-Here are the main issues I ran into and how I solved them:
+Several non-trivial implementation issues came up during development:
 
-\textbf{DeepFool numerical issues:} DeepFool computes gradients for all 10 classes in a loop, and you need \texttt{retain\_graph=True} or PyTorch throws away the graph after the first backward pass. I also had to add $10^{-8}$ to the norm denominators because sometimes the gradient differences are basically zero and you get NaN values.
+\textbf{DeepFool numerical stability.} DeepFool computes gradients for all 10 classes inside a loop, which requires \texttt{retain\_graph=True} in PyTorch (otherwise the computation graph is freed after the first \texttt{backward()} call). Additionally, gradient differences between classes are sometimes near-zero, causing division-by-zero in the distance computation. Adding $10^{-8}$ to the norm denominators resolved this.
 
-\textbf{PGD memory leak:} If you forget to call \texttt{.detach()} on the adversarial images between PGD iterations, PyTorch keeps building up the computational graph across all steps. With 20 iterations, memory usage explodes. Detaching after each projection step fixed it.
+\textbf{PGD memory accumulation.} As mentioned earlier, failing to detach adversarial tensors between PGD iterations causes PyTorch to retain the full computation graph across all steps. At 20 iterations, this quickly exhausts memory. Explicit \texttt{.detach()} after each projection fixed it.
 
-\textbf{Batch norm corruption:} Already mentioned above, but switching to \texttt{model.eval()} during PGD generation inside the adversarial training loop was essential. Without it, the running mean and variance get thrown off by the adversarial data.
+\textbf{Batch normalization corruption.} Switching to \texttt{model.eval()} during PGD generation inside the adversarial training loop was essential. Without this, running statistics diverge and training does not converge properly.
 
-\textbf{MPS backend quirks:} Apple Silicon GPU support in PyTorch is still maturing. Some operations gave slightly different results on MPS vs CPU, and a few were not supported at all. I had to fall back to CPU for certain things and double-check that the numbers matched.
+\textbf{MPS backend issues.} PyTorch's MPS support is still maturing. I encountered some numerical discrepancies between MPS and CPU results, and a few operations that were not yet implemented on MPS. In those cases I fell back to CPU and verified that the outputs matched.
 
 \section{Code Organization}
 
-I organized the codebase by functionality, keeping things modular:
+The codebase is organized by functionality:
 
 \begin{verbatim}
 adversarial-robustness/
@@ -156,12 +156,12 @@ adversarial-robustness/
 +-- Dockerfile                 # Container for deployment
 \end{verbatim}
 
-You run experiments through \texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}, which take command-line arguments for choosing between standard/adversarial training and setting evaluation parameters. All the hyperparameters live in a YAML config file.
+Experiments are run through \texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}, with command-line arguments for selecting training mode and evaluation parameters. Hyperparameters are stored in a YAML configuration file.
 
 \section{Deployment}
 
-I also built a web demo so people can actually see what adversarial attacks do. It is a Streamlit app where you pick a CIFAR-10 image (or upload your own), choose an attack and an epsilon value, and see the results from both models instantly. The interface shows the original image next to the perturbation (amplified so it is visible) and the adversarial image, plus the confidence scores from both the standard and robust models. I containerized it with Docker and put it on HuggingFace Spaces.
+I built a web demo to make the results tangible. It is a Streamlit application where users can select a CIFAR-10 image (or upload their own), pick an attack type and epsilon value, and immediately see what happens. The interface displays the original image alongside the perturbation (amplified for visibility) and the adversarial image, with confidence scores from both the standard and robust models shown side by side. The application is containerized with Docker and hosted on HuggingFace Spaces.
 
 \section{Summary}
 
-In this chapter I covered the full implementation of the adversarial attack and defense framework. The modular design keeps model architectures, attack algorithms, training procedures, and evaluation as separate components with consistent interfaces. The key decisions I made along the way (keeping inputs in $[0, 1]$ pixel space, handling batch normalization carefully during adversarial training, tracking everything with MLflow) were driven by both the practical needs of adversarial robustness research and good software engineering practices. The next chapter presents the experimental results I got using this implementation.
+This chapter covered the full implementation: model architecture, three attack algorithms, adversarial training pipeline, and a web-based demo. The key engineering decisions --- skipping input normalization to keep $\epsilon$ values interpretable, managing batch normalization during adversarial training, and careful memory management in iterative attacks --- were driven by the practical requirements of adversarial robustness experiments. The next chapter presents the results obtained with this implementation.

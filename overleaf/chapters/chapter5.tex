@@ -3,13 +3,13 @@
 
 \section{Introduction}
 
-This chapter presents the results from my experiments. I evaluated the three adversarial attacks on CIFAR-10 using ResNet-18 models, measured how vulnerable the standard model is, tested how well PGD-based adversarial training works as a defense, and compared the attacks against each other. Everything was run using the framework I described in Chapter~\ref{ch:implementation}, and I tracked all experiments with MLflow to keep things reproducible.
+This chapter reports the experimental results. I evaluated FGSM, PGD, and DeepFool on CIFAR-10, measured the vulnerability of a standard ResNet-18, applied PGD-based adversarial training, and compared the three attacks head-to-head. All experiments used the framework described in Chapter~\ref{ch:implementation}, with MLflow tracking throughout.
 
 \section{Experimental Setup}
 
 \subsection{Training Configuration}
 
-I trained two ResNet-18 models on CIFAR-10. Same architecture, same optimizer, same number of epochs. The only difference is that one was trained normally and the other with PGD adversarial training. Table~\ref{tab:training_config} has the full settings.
+Two ResNet-18 models were trained on CIFAR-10 with identical hyperparameters --- same optimizer, same schedule, same number of epochs. The only difference: one was trained normally, the other with PGD adversarial training. Table~\ref{tab:training_config} lists the full configuration.
 
 \begin{table}[htbp]
     \centering
@@ -31,11 +31,11 @@ I trained two ResNet-18 models on CIFAR-10. Same architecture, same optimizer, s
     \end{tabular}
 \end{table}
 
-Standard training finished in about 55 minutes, while adversarial training took roughly 4.5 hours, which is about $7\times$ longer because of the overhead from generating PGD adversarial examples at every training step.
+Standard training completed in roughly 55 minutes. Adversarial training took about 4.5 hours --- the $7\times$ slowdown comes from running 7-step PGD at every training iteration.
 
 \subsection{Attack Parameters}
 
-Table~\ref{tab:attack_params} summarizes the parameters used for each attack during evaluation.
+Table~\ref{tab:attack_params} lists the parameters used for each attack during evaluation.
 
 \begin{table}[htbp]
     \centering
@@ -52,13 +52,13 @@ Table~\ref{tab:attack_params} summarizes the parameters used for each attack dur
     \end{tabular}
 \end{table}
 
-For adversarial training, PGD was used as the inner attack with $\epsilon = 8/255$, step size $\alpha = 2/255$, and 7 iterations with random start, following the configuration recommended by Madry et al.~\cite{madry2018towards}.
+For the inner attack during adversarial training, I used PGD with $\epsilon = 8/255$, $\alpha = 2/255$, and 7 iterations with random start, which matches the setup in Madry et al.~\cite{madry2018towards}.
 
 \subsection{Evaluation Protocol}
 
-I evaluated all attacks on the full CIFAR-10 test set (10,000 images). For PGD I used a single random restart during evaluation, which is the standard practice when benchmarking against adversarial training. Attack success rates were computed based on samples that the model classified correctly on clean data.
+All attacks were evaluated on the full CIFAR-10 test set (10,000 images). PGD used a single random restart, which is standard for benchmarking adversarially trained models. Attack success rates were computed only over samples that the model classified correctly on clean inputs.
 
-Figure~\ref{fig:demo_interface} shows the interactive demo I deployed on HuggingFace Spaces, where you can see the model performance metrics and compare the standard and adversarially trained models under different attack settings in real time.
+Figure~\ref{fig:demo_interface} shows the interactive demo deployed on HuggingFace Spaces, where one can compare the two models under different attacks and perturbation budgets.
 
 \begin{figure}[htbp]
     \centering
@@ -71,7 +71,7 @@ Figure~\ref{fig:demo_interface} shows the interactive demo I deployed on Hugging
 
 \subsection{Model Performance on Clean Data}
 
-Table~\ref{tab:clean_accuracy} reports the classification accuracy of both models on clean (unperturbed) test data.
+Table~\ref{tab:clean_accuracy} shows the clean test accuracy for both models.
 
 \begin{table}[htbp]
     \centering
@@ -87,13 +87,13 @@ Table~\ref{tab:clean_accuracy} reports the classification accuracy of both model
     \end{tabular}
 \end{table}
 
-The standard model got 94.1\% clean accuracy, which lines up with what others have reported for ResNet-18 on CIFAR-10 without input normalization. The adversarially trained model came in at 83.9\%, so there is a 10.2 percentage point drop. This kind of accuracy loss is a well-known side effect of adversarial training~\cite{madry2018towards}, and I discuss it more in Section~\ref{sec:tradeoffs}.
+The standard model reaches 94.1\%, which is consistent with published results for ResNet-18 on CIFAR-10 without input normalization. The adversarially trained model achieves 83.9\% --- a drop of 10.2 percentage points. This accuracy penalty is expected and well-documented in the literature~\cite{madry2018towards}; I return to it in Section~\ref{sec:tradeoffs}.
 
 \section{Attack Evaluation Results}
 
 \subsection{FGSM Attack Results}
 
-Table~\ref{tab:fgsm_results} shows the robust accuracy of both models under FGSM attacks at varying perturbation budgets.
+Table~\ref{tab:fgsm_results} reports robust accuracy under FGSM across several perturbation budgets.
 
 \begin{table}[htbp]
     \centering
@@ -109,11 +109,11 @@ Table~\ref{tab:fgsm_results} shows the robust accuracy of both models under FGSM
     \end{tabular}
 \end{table}
 
-The standard model's accuracy drops fast under FGSM, going from 94.1\% all the way down to 18.3\% at the standard benchmark perturbation of $\epsilon = 8/255$. The adversarially trained model does much better, holding on to 56.0\% accuracy at the same level, which is a 37.7 percentage point improvement. Figure~\ref{fig:attack_fgsm} shows what this looks like visually on a sample image.
+The standard model degrades rapidly: from 94.1\% clean accuracy down to just 18.3\% at $\epsilon = 8/255$. The adversarially trained model retains 56.0\% at the same budget --- a 37.7 percentage point advantage. Figure~\ref{fig:attack_fgsm} shows a visual example of FGSM on a sample image.
 
 \subsection{PGD Attack Results}
 
-Table~\ref{tab:pgd_results} presents robust accuracy under PGD-20 attacks, which represent a stronger evaluation than FGSM due to the iterative optimization.
+PGD-20 results are in Table~\ref{tab:pgd_results}. This is the stronger evaluation.
 
 \begin{table}[htbp]
     \centering
@@ -129,11 +129,11 @@ Table~\ref{tab:pgd_results} presents robust accuracy under PGD-20 attacks, which
     \end{tabular}
 \end{table}
 
-PGD is much more effective than FGSM against the standard model, as you can see in Figure~\ref{fig:attack_pgd}. At $\epsilon = 8/255$, the standard model only has 1.2\% accuracy left under PGD, compared to 18.3\% under FGSM. This really shows that single-step attacks like FGSM underestimate how vulnerable the model actually is. The adversarially trained model keeps 45.1\% accuracy under PGD at $\epsilon = 8/255$, which is a 43.9 percentage point improvement. At the strongest perturbation of $\epsilon = 16/255$, the standard model is basically completely fooled (0.1\%), while the robust model still gets 22.6\% right.
+The numbers here are striking. At $\epsilon = 8/255$, PGD reduces the standard model to 1.2\% accuracy --- essentially zero. Compare that to 18.3\% under FGSM: the single-step attack substantially underestimates the model's true vulnerability. The adversarially trained model holds at 45.1\% under PGD, a 43.9 percentage point improvement over the standard model. Even at $\epsilon = 16/255$, where the standard model is at 0.1\%, the robust model still achieves 22.6\%. Figure~\ref{fig:attack_pgd} illustrates the PGD attack on a sample image.
 
 \subsection{DeepFool Attack Results}
 
-DeepFool works differently from the other two attacks. Instead of working within a fixed perturbation budget, it finds the smallest perturbation needed to change each prediction. The results are in Table~\ref{tab:deepfool_results}.
+DeepFool operates differently --- it finds the minimal perturbation rather than perturbing within a fixed budget. Results are in Table~\ref{tab:deepfool_results}.
 
 \begin{table}[htbp]
     \centering
@@ -149,11 +149,11 @@ DeepFool works differently from the other two attacks. Instead of working within
     \end{tabular}
 \end{table}
 
-Against the standard model, DeepFool fools 91.1\% of correctly classified images (Figure~\ref{fig:attack_deepfool}) with an average $L_2$ perturbation of just 0.248. That is a very small number. Against the adversarially trained model, it needs about $3.6\times$ more perturbation on average, and even then the success rate only reaches 62.0\%. So the decision boundaries really have moved further from the data after adversarial training.
+Against the standard model, DeepFool succeeds on 91.1\% of correctly classified images with an average $L_2$ perturbation of just 0.248 (Figure~\ref{fig:attack_deepfool}). That number is remarkably small. Against the adversarially trained model, it requires roughly $3.6\times$ larger perturbations on average and only reaches 62.0\% success. The decision boundaries have clearly moved further from the data after adversarial training.
 
 \subsection{Visual Examples}
 
-Figure~\ref{fig:adversarial_examples} shows what adversarial attacks actually look like on CIFAR-10 images. Even at $\epsilon = 8/255$, you really cannot tell the difference between the original and adversarial images just by looking at them. But the standard model gets completely fooled and is very confident about its wrong answer. The adversarially trained model, on the other hand, still gets it right and gives more reasonable confidence scores.
+Figure~\ref{fig:adversarial_examples} shows adversarial examples on a CIFAR-10 cat image. At $\epsilon = 8/255$, the visual difference between the original and adversarial images is imperceptible to the eye. Yet the standard model misclassifies with near-100\% confidence, while the adversarially trained model still gets it right.
 
 \begin{figure}[htbp]
     \centering
@@ -184,19 +184,19 @@ Figure~\ref{fig:adversarial_examples} shows what adversarial attacks actually lo
     \label{fig:attack_deepfool}
 \end{figure}
 
-Playing with the demo, I noticed something interesting about the confidence scores. When the standard model gets fooled, it is not just wrong, it is wrong with 99\% confidence. The adversarially trained model is more cautious. Even when it gets the answer right on an adversarial input, it usually gives something like 50 to 60\% confidence instead of being overly sure. That is actually a useful property because it means the model ``knows'' when it is dealing with something unusual.
+An interesting observation from the demo: confidence scores. When the standard model is fooled, it does not just give a wrong answer --- it gives a wrong answer with 99\% confidence. The adversarially trained model behaves quite differently. Even on inputs where it predicts correctly, it tends to output something like 50--60\% confidence rather than near-100\%. In a sense, the robust model ``knows'' it is being challenged. This calibration property turns out to be practically useful --- I discuss it further below.
 
 \section{Adversarial Training Results}
 
 \subsection{Training Dynamics}
 
-Standard training reached 94.1\% test accuracy after 50 epochs, with training accuracy hitting about 98\%. The training loss went down steadily from around 1.55 in the first epoch to 0.034 by the end, and there was no obvious overfitting since the test accuracy kept improving throughout.
+Standard training reached 94.1\% test accuracy after 50 epochs. Training accuracy hit around 98\%, and loss decreased steadily from about 1.55 to 0.034. No obvious signs of overfitting --- test accuracy continued improving throughout.
 
-Adversarial training behaved quite differently. The training loss stayed higher than standard training because the model is being trained on adversarial examples, which are harder. Clean test accuracy settled around 83.9\%, and PGD robustness accuracy (which is what I used to select the best checkpoint) peaked at 50.6\%.
+Adversarial training showed a different pattern. The training loss remained elevated compared to standard training, which makes sense since the model sees adversarial (i.e., harder) examples at every step. Clean test accuracy settled around 83.9\%. PGD robustness accuracy --- which I used for checkpoint selection --- peaked at 50.6\%.
 
 \subsection{PGD Adversarial Training on CIFAR-10}
 
-Table~\ref{tab:adv_training_comparison} provides a comprehensive comparison of the standard and adversarially trained models across all attack types at $\epsilon = 8/255$.
+Table~\ref{tab:adv_training_comparison} gives the full comparison at $\epsilon = 8/255$.
 
 \begin{table}[htbp]
     \centering
@@ -214,22 +214,22 @@ Table~\ref{tab:adv_training_comparison} provides a comprehensive comparison of t
     \end{tabular}
 \end{table}
 
-The adversarially trained model gives up 10.2 percentage points of clean accuracy but picks up an average of 36.9 percentage points in robust accuracy across all three attacks. The biggest improvement is against PGD (+43.9 pp), which makes sense since PGD is the attack that was used during training.
+The trade-off is clear: 10.2 percentage points of clean accuracy buys an average of 36.9 percentage points across three attacks. The largest gain is against PGD ($+43.9$ pp), which is expected --- PGD is the attack used during training. But the gains transfer to the other attacks as well.
 
 \subsection{Accuracy Trade-offs}
 \label{sec:tradeoffs}
 
-Losing 10.2\% in clean accuracy is not trivial, but it is a well-understood cost of adversarial training. The trade-off happens because the model is forced to learn features that can handle worst-case perturbations, and those are not always the same features that give you the best clean accuracy. In practice, if you are deploying a model in a safety-critical setting, a model that correctly classifies 84\% of images under all conditions is more useful than one that gets 94\% on clean data but falls apart completely when attacked.
+A 10.2\% drop in clean accuracy is real, and it is not something to dismiss. But the trade-off is well understood in the literature. Adversarial training forces the model to rely on features that are stable under worst-case perturbations, and these are not necessarily the same features that maximize clean-data performance. Whether the trade-off is acceptable depends on the deployment context. For a safety-critical application, a model that consistently classifies at 84\% under all conditions is arguably more useful than one that achieves 94\% on clean data but collapses to 1\% when attacked.
 
 \subsection{Computational Cost}
 
-Adversarial training used about $7\times$ more computation per epoch than standard training. On my Apple M4 Pro, 50 epochs of standard training on CIFAR-10 with ResNet-18 took about 55 minutes, while adversarial training took about 4.5 hours. The extra time comes from running 7-step PGD at every training batch, which means 7 additional forward and backward passes per batch. This is a real practical limitation, especially if you want to scale up to larger models or datasets.
+Adversarial training costs roughly $7\times$ more computation per epoch. On my Apple M4 Pro, 50 epochs of standard training took about 55 minutes; adversarial training took about 4.5 hours. The overhead comes directly from running 7-step PGD on every mini-batch --- seven extra forward and backward passes per batch. For CIFAR-10 with ResNet-18 this is manageable, but it would become a significant bottleneck at larger scales.
 
 \section{Attack Comparison}
 
 \subsection{Success Rate and Strength Comparison}
 
-Table~\ref{tab:attack_comparison} provides a detailed comparison of the three attacks against the standard model at $\epsilon = 8/255$.
+Table~\ref{tab:attack_comparison} compares all three attacks against the standard model at $\epsilon = 8/255$.
 
 \begin{table}[htbp]
     \centering
@@ -246,40 +246,40 @@ Table~\ref{tab:attack_comparison} provides a detailed comparison of the three at
     \end{tabular}
 \end{table}
 
-PGD-20 is clearly the strongest attack, bringing the standard model down to 1.2\% accuracy compared to 18.3\% for FGSM and 8.9\% for DeepFool. This is why PGD is considered the go-to attack for robustness evaluation~\cite{madry2018towards}. Both FGSM and PGD use the full $\epsilon$ budget ($L_\infty = 0.031$), so they end up with the same maximum perturbation size, but PGD's iterative approach finds much more damaging perturbations within that same budget. DeepFool falls in between in terms of attack strength but uses much smaller perturbations ($L_2 = 0.248$ vs.\ 1.351), which shows its ability to find near-minimal perturbations.
+PGD-20 is the strongest attack by a wide margin, bringing the standard model to 1.2\% --- this is why it has become the standard evaluation method for adversarial robustness~\cite{madry2018towards}. Note that FGSM and PGD use the same $L_\infty$ budget ($0.031$), but PGD finds much more damaging perturbations within that budget through its iterative procedure. DeepFool lands between the two in attack strength (8.9\% accuracy) but uses substantially smaller perturbations ($L_2 = 0.248$ vs.\ 1.351). This highlights its purpose: finding the \emph{minimum} perturbation needed, not the most damaging one within a fixed budget.
 
-The computation time differences make sense given the algorithms: FGSM needs just one forward-backward pass, PGD needs 20, and DeepFool processes each image individually with gradient computations for all classes at every iteration.
+The computation times reflect the algorithmic differences: FGSM needs one gradient computation, PGD needs 20, and DeepFool processes each image individually with per-class gradients at every iteration.
 
 \subsection{Perturbation Analysis}
 
-Something I found interesting is how the perturbation sizes compare across attacks. FGSM and PGD both use the full $\epsilon$ budget, perturbing every pixel by exactly $\epsilon$ in the signed gradient direction. DeepFool, on the other hand, produces perturbations that are $5.4\times$ smaller in $L_2$ norm on average, and yet it still manages a 91.1\% success rate against the standard model. What this tells us is that the standard model's decision boundaries are really close to the data points. The average robustness radius is only 0.248 in $L_2$ distance.
+The perturbation comparison reveals something important about the standard model's geometry. FGSM and PGD both saturate the $\epsilon$ budget --- they perturb every pixel by exactly $\epsilon$ in the signed gradient direction. DeepFool, by contrast, uses perturbations that are $5.4\times$ smaller in $L_2$ norm, and yet it still fools 91.1\% of images. This tells us that the decision boundaries of the standard model lie very close to the data manifold. The average robustness radius is just 0.248 in $L_2$ distance --- not much room at all.
 
-For the adversarially trained model, DeepFool needs perturbations averaging 0.892 in $L_2$, which confirms that adversarial training does push the decision boundaries much further from the data.
+For the adversarially trained model, DeepFool needs perturbations averaging 0.892 in $L_2$. So adversarial training does exactly what it should: it pushes the decision boundaries away from the data.
 
 \section{Discussion}
 
 \subsection{Key Findings}
 
-Here are the main things I took away from the experiments:
+Four main takeaways from these experiments:
 
-First, standard deep learning models are extremely vulnerable. The standard ResNet-18 achieves 94.1\% clean accuracy, but under a 20-step PGD attack at $\epsilon = 8/255$ (a perturbation you cannot see with your eyes) it drops to 1.2\%. That is a near-complete failure, and it validates the security concerns that researchers have been raising.
+First, standard deep learning models are extraordinarily fragile. A ResNet-18 with 94.1\% clean accuracy drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. The perturbation is imperceptible to humans. This is, by any measure, a near-complete failure of the model.
 
-Second, you cannot rely on FGSM alone to evaluate robustness. FGSM suggests the model still has 18.3\% accuracy, which sounds bad but nowhere near as bad as what PGD reveals (1.2\%). If someone only tested with FGSM, they would significantly underestimate how vulnerable their model is.
+Second, evaluating robustness with FGSM alone is misleading. FGSM gives 18.3\% accuracy, which paints a much rosier picture than the 1.2\% that PGD reveals. Anyone relying solely on FGSM evaluations would significantly overestimate how safe their model is.
 
-Third, adversarial training genuinely helps. PGD-based adversarial training brings robust accuracy from near-zero up to 45.1\% under PGD attack, at the cost of a 10.2\% drop in clean accuracy. This trade-off is consistent with what Madry et al.~\cite{madry2018towards} and others have reported.
+Third, PGD-based adversarial training provides real robustness gains. Robust accuracy under PGD goes from near-zero to 45.1\%, at the cost of 10.2 percentage points of clean accuracy. These numbers are consistent with what Madry et al.~\cite{madry2018towards} reported.
 
-Fourth, adversarial training also improves confidence calibration. The standard model gives near-100\% confidence to its wrong adversarial predictions, while the robust model produces more spread-out probability outputs. This is actually quite useful in practice because in real deployments, knowing when your model is uncertain can be just as important as the prediction itself.
+Fourth, adversarial training affects confidence calibration in a useful way. The standard model assigns near-100\% confidence to its wrong predictions on adversarial inputs. The robust model's confidence outputs are more spread out, more reflective of actual uncertainty. In deployment scenarios, knowing when a model is uncertain is often as valuable as the prediction itself.
 
 \subsection{Comparison with Literature}
 
-My results match up well with what has been published before. Madry et al.~\cite{madry2018towards} reported around 45 to 47\% PGD robustness at $\epsilon = 8/255$ for adversarially trained ResNet on CIFAR-10, and I got 45.1\%, so that is right in line. The clean accuracy of my robust model (83.9\%) also falls within the typical range of 82 to 87\% that you see in the literature depending on training details.
+My results align well with published benchmarks. Madry et al.~\cite{madry2018towards} reported 45--47\% PGD robustness at $\epsilon = 8/255$ for adversarially trained ResNet on CIFAR-10; I obtained 45.1\%. Clean accuracy of 83.9\% falls within the 82--87\% range typically reported in the literature, with variation depending on exact training details.
 
-The DeepFool numbers are also consistent with the original work by Moosavi-Dezfooli et al.~\cite{moosavi2016deepfool}, who showed that deep networks tend to have small robustness radii when measured with minimal perturbation attacks.
+The DeepFool results are likewise consistent with the original work by Moosavi-Dezfooli et al.~\cite{moosavi2016deepfool}, who demonstrated that standard networks have small robustness radii under minimal-perturbation attacks.
 
 \subsection{Limitations and Observations}
 
-There are some limitations worth noting. I only ran experiments on CIFAR-10, which has small $32 \times 32$ images, so results could be different on higher-resolution datasets where the same perturbation budgets have different visual effects. I also only tested one architecture (ResNet-18), and different architectures might behave differently. For PGD evaluation I used a single random restart, which might slightly underestimate the true vulnerability; multiple restarts would give tighter bounds. And finally, I only looked at the $L_\infty$ threat model for FGSM and PGD; the $L_2$ threat model might tell a different story.
+Several limitations should be noted. The experiments are restricted to CIFAR-10, which has small $32 \times 32$ images; the same $\epsilon$ budget may have different perceptual effects at higher resolutions. Only one architecture was tested (ResNet-18), and others could behave differently. For PGD evaluation I used a single random restart --- multiple restarts would give a tighter upper bound on vulnerability. And I only considered the $L_\infty$ threat model for FGSM and PGD; the $L_2$ setting could yield different conclusions.
 
 \section{Summary}
 
-The experiments confirm that standard deep neural networks are extremely vulnerable to adversarial attacks and that adversarial training is an effective way to defend against them. PGD stands out as the strongest first-order attack, reducing standard model accuracy to near-zero with perturbations that humans cannot even notice. Adversarial training brings back a meaningful level of robustness at the cost of some clean accuracy, and my results match the published benchmarks closely. These findings underline why adversarial robustness research matters, and the next chapter wraps up with conclusions and directions for future work.
+The experiments paint a clear picture: standard deep neural networks are severely vulnerable to adversarial perturbations, and PGD is the most effective first-order attack for exposing this vulnerability. Adversarial training recovers a meaningful degree of robustness at the expense of some clean accuracy, and the numbers I obtained match published benchmarks. These results underscore the importance of robustness evaluation in deep learning and motivate the directions for future work discussed in the next chapter.
