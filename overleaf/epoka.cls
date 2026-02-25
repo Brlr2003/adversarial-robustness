@@ -347,18 +347,6 @@
         Date: \rule{3cm}{0.4pt}
     \end{flushright}
     
-    \vspace{1.5cm}
-    
-    \noindent
-    Examining Committee Members:\par\vspace{0.5cm}
-    
-    \noindent
-    \begin{tabular}{@{}p{0.45\textwidth}p{0.3\textwidth}l@{}}
-        \th@committeeone & (\th@departmentenglish) & \rule{2.5cm}{0.4pt} \\[0.8cm]
-        \th@committeetwo & (\th@departmentenglish) & \rule{2.5cm}{0.4pt} \\[0.8cm]
-        \th@committeethree & (\th@departmentenglish) & \rule{2.5cm}{0.4pt} \\
-    \end{tabular}
-    
     \clearpage
 }
 

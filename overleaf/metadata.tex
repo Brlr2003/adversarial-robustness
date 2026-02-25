@@ -30,13 +30,6 @@
 % Head of Department (for approval page)
 \headofdepartment{Dr. Florenc Skuka} 
 
-% Committee members (for approval page)
-\committee
-    {Assoc. Prof. Dr. Arban Uka}  % Chair/Supervisor
-    {Assoc. Prof. Dr. [Member Two]}  % TODO: Add committee member
-    {Asst. Prof. Dr. [Member Three]}  % TODO: Add committee member
-    {}  % Leave empty if not applicable
-    {}  % Leave empty if not applicable
 
 % Abstract (English)
 \abstract{
@@ -50,9 +43,9 @@ This thesis focuses on the practical study of adversarial attacks against image 
 
 % Abstrakt (Albanian)
 \abstrakt{
-Modelet e mësimit të thellë arrijnë performancë të jashtëzakonshme në detyra si klasifikimi i imazheve, megjithatë ato janë të njohura për cenueshmërinë ndaj shembujve kundërshtarë---inpute që janë ndryshuar me ndryshime të vogla, shpesh të padukshme, të cilat shkaktojnë klasifikim të gabuar me besueshmëri të lartë. Kjo cenueshmëri ngre shqetësime serioze për sigurinë e sistemeve të përdorura në drejtimin autonom, biometrikë dhe sigurinë kibernetike.
+Modelet e mësimit të thellë (Deep Learning) arrijnë performancë të jashtëzakonshme në detyra si klasifikimi i imazheve, megjithatë ato janë të njohura për cenueshmërinë ndaj shembujve kundërshtarë (Adversarial Examples)---hyrje që janë ndryshuar me ndryshime të vogla, shpesh të padukshme, të cilat shkaktojnë klasifikim të gabuar me besueshmëri të lartë. Kjo cenueshmëri ngre shqetësime serioze për sigurinë e sistemeve të përdorura në drejtimin autonom, biometrikë dhe sigurinë kibernetike.
 
-Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe tre sulme white-box (FGSM, PGD, DeepFool) implementohen dhe krahasohen. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa. Trajnimi kundërshtar i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën të njëjtin sulm, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
+Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar (Convolutional Neural Network) ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe tre sulme white-box (FGSM, PGD, DeepFool) implementohen dhe krahasohen. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa. Trajnimi kundërshtar (Adversarial Training) i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën të njëjtin sulm, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
 }
 
 % Keywords (Albanian)
