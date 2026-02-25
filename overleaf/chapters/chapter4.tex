@@ -77,7 +77,7 @@ A lesson I learned the hard way: you have to call \texttt{.detach()} on the adve
 
 \subsection{DeepFool Implementation}
 
-DeepFool~\cite{moosavi2016deepfool} is the weird one. No epsilon budget. Instead it finds the \emph{minimum} perturbation that changes the prediction. It does this by linearizing the classifier at each step and finding the nearest decision boundary.
+DeepFool~\cite{moosavidezfooli2016deepfool} is the weird one. No epsilon budget. Instead it finds the \emph{minimum} perturbation that changes the prediction. It does this by linearizing the classifier at each step and finding the nearest decision boundary.
 
 The catch: it has to process images individually. No batching. For each image, at each iteration, it computes the gradient of every class logit with respect to the input. Then for each class $k$ that is not the current predicted class $\hat{k}$, it computes:
 
