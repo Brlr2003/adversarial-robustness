@@ -3,15 +3,15 @@
 
 \section{Introduction}
 
-Deep neural networks (DNNs) have transformed computer vision, speech recognition, and many other fields. However, their vulnerability to adversarial examples has revealed a critical weakness: an attacker can add carefully crafted, low-magnitude noise to an input and force a model to produce incorrect predictions with high confidence, even when the perturbation is visually imperceptible to humans~\cite{szegedy2014intriguing,goodfellow2015explaining}.
+Over the past decade, deep neural networks (DNNs) have become the go-to approach for tasks ranging from computer vision to speech recognition. They work remarkably well in practice, but they come with a surprising flaw. If someone adds a tiny amount of carefully chosen noise to an image, noise so small that a person would never notice it, the network can suddenly produce a completely wrong prediction, and it will do so with high confidence~\cite{szegedy2014intriguing,goodfellow2015explaining}. These manipulated inputs are called adversarial examples.
 
-This phenomenon is not just a theoretical curiosity. Adversarial examples have been demonstrated on real physical systems, such as printed images photographed by a camera or modified road signs in autonomous driving scenarios~\cite{kurakin2016adversarialphysical}. The existence of such attacks challenges the reliability of deep learning in safety-critical and security-sensitive applications and has motivated a large body of work on both attacks and defenses~\cite{yuan2019adversarial,ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
+What makes this problem particularly worrying is that it is not limited to laboratory settings. Researchers have shown that adversarial examples can fool models in the physical world too, for instance through printed images held up to a camera or subtly altered road signs that confuse self-driving car systems~\cite{kurakin2016adversarialphysical}. When you consider that deep learning is being used more and more in areas where mistakes can be dangerous (think autonomous driving, medical imaging, or security screening), the stakes become clear. This has pushed a lot of researchers to look into both how these attacks work and how we might defend against them~\cite{yuan2019adversarial,ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
 
 \section{Background and Motivation}
 
-The vulnerability of deep neural networks to adversarial examples was first systematically studied by Szegedy et al.~\cite{szegedy2014intriguing}, who discovered that small, carefully designed perturbations could cause high-confidence misclassifications. Goodfellow et al.~\cite{goodfellow2015explaining} later proposed a linear explanation for this phenomenon and introduced the Fast Gradient Sign Method (FGSM), demonstrating that adversarial examples could be generated efficiently using gradient information.
+The story of adversarial examples really began with the work of Szegedy et al.~\cite{szegedy2014intriguing}. They were the first to show, in a systematic way, that even well-trained neural networks could be tricked by perturbations that are barely visible. Shortly after, Goodfellow et al.~\cite{goodfellow2015explaining} offered an explanation for why this happens. They argued that it has to do with the linear behavior of networks in high-dimensional spaces, and they introduced the Fast Gradient Sign Method (FGSM), a simple but effective way to generate adversarial examples using gradient information.
 
-The motivation for this research stems from the critical need to understand and mitigate these vulnerabilities, particularly as deep learning systems are increasingly deployed in safety-critical applications such as autonomous vehicles, medical diagnosis, and security systems. Understanding how adversarial attacks work is the first step toward building more robust models.
+My motivation for this research comes from a straightforward observation: if we are going to trust deep learning models in applications like autonomous vehicles, medical diagnosis, or security systems, we need to understand how fragile they really are. Studying how adversarial attacks work is, in my view, the necessary first step before we can build models that are genuinely robust.
 
 % TODO: Consider adding a figure showing adversarial example concept
 % \begin{figure}[htbp]
@@ -23,47 +23,47 @@ The motivation for this research stems from the critical need to understand and 
 
 \section{Problem Statement}
 
-Given standard image classification models (e.g., convolutional neural networks trained on MNIST and CIFAR-10), this thesis aims to answer:
+I am working with standard image classification models, specifically convolutional neural networks trained on MNIST and CIFAR-10, and this thesis tries to answer three questions:
 
 \begin{enumerate}
-    \item How vulnerable are these models to common white-box adversarial attacks (FGSM, BIM/PGD, DeepFool) under different perturbation norms and budgets?
-    \item How effective is adversarial training (particularly FGSM- and PGD-based) in improving robustness without overly sacrificing clean accuracy?
-    \item How do different attacks compare in terms of success rate, perturbation magnitude, and transferability between architectures?
+    \item How vulnerable are these models to common white-box adversarial attacks (FGSM, BIM/PGD, DeepFool) when we vary the perturbation norms and budgets?
+    \item How well does adversarial training (particularly PGD-based) improve robustness, and how much clean accuracy do we lose in the process?
+    \item How do the different attacks compare when we look at success rate, perturbation size, and computational cost?
 \end{enumerate}
 
-The project focuses on evasion attacks at test time and on image classification as a concrete, manageable setting for studying these fundamental questions about neural network robustness.
+I focus specifically on evasion attacks at test time and use image classification as a concrete setting for studying these questions about neural network robustness.
 
 \section{Research Objectives}
 
-This research aims to bridge the gap between theoretical understanding and practical implementation of adversarial attacks and defenses. The specific objectives of this study are:
+The goal of this research is to connect the theoretical side of adversarial attacks with hands-on implementation and experimentation. More specifically, I set out to:
 
 \begin{itemize}
-    \item To implement and evaluate several classic adversarial attacks (FGSM, BIM/PGD, DeepFool) on standard benchmark datasets.
-    \item To analyze the vulnerability of convolutional neural networks to these attacks under various perturbation constraints.
-    \item To apply adversarial training as a defense mechanism and evaluate its effectiveness in improving model robustness.
-    \item To compare the trade-offs between clean accuracy and robust accuracy across different defense configurations.
+    \item Implement and evaluate several well-known adversarial attacks (FGSM, BIM/PGD, DeepFool) on standard benchmark datasets.
+    \item Measure how vulnerable convolutional neural networks are to these attacks under different perturbation constraints.
+    \item Apply adversarial training as a defense and see how much it actually helps in terms of model robustness.
+    \item Look at the trade-offs between clean accuracy and robust accuracy across different configurations.
 \end{itemize}
 
 \section{Contributions}
 
-The primary contributions of this thesis are summarized as follows:
+The main contributions of this thesis are:
 
 \begin{enumerate}
-    \item An empirical comparison of several classic adversarial attacks on standard deep learning models, providing insights into their relative effectiveness and computational costs.
-    \item A demonstration of how adversarial training changes the robustness profile of models, including analysis of its strengths and trade-offs.
-    \item A structured experimental framework that connects practical implementations with the theoretical and survey literature on adversarial attacks and defenses.
+    \item An empirical comparison of three classic adversarial attacks on a standard deep learning model, showing how they differ in effectiveness and computational cost.
+    \item A practical demonstration of how adversarial training changes a model's robustness profile, including the trade-offs involved.
+    \item A structured and reproducible experimental framework that ties together the implementation with the theoretical background covered in the literature.
 \end{enumerate}
 
 \section{Thesis Organization}
 
-This thesis is organized into six primary chapters, each focusing on a critical aspect of the research:
+The rest of this thesis is organized as follows:
 
-\textbf{Chapter 2} provides an extensive literature review of adversarial examples, covering the theoretical foundations, taxonomy of attacks, and existing defense mechanisms, highlighting the gaps that this research addresses.
+\textbf{Chapter 2} reviews the existing literature on adversarial examples, covering the theoretical foundations, the different types of attacks, and the defenses that have been proposed so far.
 
-\textbf{Chapter 3} details the methodology, including the mathematical formulation of the attacks implemented, the datasets and model architectures used, and the experimental design.
+\textbf{Chapter 3} explains the methodology I used, including the mathematical formulation of each attack, the datasets and model architectures, and how I designed the experiments.
 
-\textbf{Chapter 4} describes the implementation of the attack algorithms and adversarial training procedures, including the software architecture and development environment.
+\textbf{Chapter 4} goes into the implementation details: how the attack algorithms and training procedures were coded, the software architecture, and the development environment.
 
-\textbf{Chapter 5} presents the experimental results, offering quantitative evaluation of attack success rates, perturbation magnitudes, and the effectiveness of adversarial training as a defense.
+\textbf{Chapter 5} presents the experimental results, with numbers on attack success rates, perturbation sizes, and how well adversarial training works as a defense.
 
-\textbf{Chapter 6} concludes the thesis, summarizing the findings, discussing limitations, and outlining potential directions for future research in adversarial machine learning.
+\textbf{Chapter 6} wraps things up with conclusions, a discussion of limitations, and ideas for future work.

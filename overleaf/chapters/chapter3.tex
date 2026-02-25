@@ -3,11 +3,11 @@
 
 \section{Introduction}
 
-This chapter presents the methodology for studying adversarial attacks and defenses on deep neural networks. The research follows an experimental approach, implementing multiple attack algorithms on standard benchmark datasets and evaluating adversarial training as a defense mechanism. The methodology is designed to provide reproducible results and systematic comparison across different attack configurations.
+In this chapter I describe how I went about studying adversarial attacks and defenses on deep neural networks. The approach is experimental: I implemented multiple attack algorithms, ran them on standard benchmark datasets, and then tested adversarial training as a way to defend against them. I tried to keep everything reproducible and set things up so that I could compare different attack configurations in a systematic way.
 
 \section{Research Design}
 
-The research adopts an experimental design with the following phases:
+The research follows four main phases:
 
 \begin{enumerate}
     \item \textbf{Model Training:} Train baseline convolutional neural networks on benchmark datasets to establish clean accuracy baselines.
@@ -23,11 +23,11 @@ The research adopts an experimental design with the following phases:
 
 \subsection{MNIST}
 
-The MNIST dataset~\cite{lecun1998mnist} consists of 70,000 grayscale images of handwritten digits (0-9), with 60,000 training images and 10,000 test images. Each image is 28$\times$28 pixels. MNIST serves as a standard benchmark for initial experiments due to its simplicity and fast training times.
+MNIST~\cite{lecun1998mnist} is a dataset of 70,000 grayscale images of handwritten digits (0 through 9), split into 60,000 for training and 10,000 for testing. Each image is 28$\times$28 pixels. I chose MNIST as a starting benchmark because it is simple enough to train on quickly, which makes it useful for testing that everything works before moving to harder datasets.
 
 \subsection{CIFAR-10}
 
-The CIFAR-10 dataset consists of 60,000 color images in 10 classes, with 50,000 training images and 10,000 test images. Each image is 32$\times$32 pixels with 3 color channels. CIFAR-10 presents a more challenging classification task and is used to evaluate attack effectiveness on more complex models.
+CIFAR-10 has 60,000 color images spread across 10 classes (things like cars, birds, cats, etc.), with 50,000 for training and 10,000 for testing. The images are 32$\times$32 pixels with 3 color channels. Compared to MNIST, CIFAR-10 is a much harder classification problem, which is why I used it as the main dataset for evaluating how well the attacks work on a more realistic model.
 
 % TODO: Add figure showing sample images from datasets
 % \begin{figure}[htbp]
@@ -41,7 +41,7 @@ The CIFAR-10 dataset consists of 60,000 color images in 10 classes, with 50,000 
 
 \subsection{MNIST Model}
 
-For MNIST, a small convolutional neural network is used with the following architecture:
+For MNIST I used a small convolutional neural network with the following layers:
 
 \begin{itemize}
     \item Conv2D (32 filters, 3$\times$3) $\rightarrow$ ReLU $\rightarrow$ Conv2D (64 filters, 3$\times$3) $\rightarrow$ ReLU
@@ -52,24 +52,24 @@ For MNIST, a small convolutional neural network is used with the following archi
 
 \subsection{CIFAR-10 Model}
 
-For CIFAR-10, a ResNet-18 architecture adapted for 32$\times$32 images is used. The full architecture details, including the modifications to the standard ResNet-18 for CIFAR-10 compatibility, are described in Chapter~\ref{ch:implementation}.
+For CIFAR-10 I went with a ResNet-18 architecture that I adapted for 32$\times$32 images. The full details of how I modified the standard ResNet-18 to work with CIFAR-10's smaller resolution are in Chapter~\ref{ch:implementation}.
 
 \section{Attack Implementations}
 
 \subsection{Fast Gradient Sign Method (FGSM)}
 
-The FGSM attack is implemented following Equation~\ref{eq:fgsm_method}:
+I implemented the FGSM attack following the standard formulation shown in Equation~\ref{eq:fgsm_method}:
 
 \begin{equation}
     x^{adv} = x + \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y))
     \label{eq:fgsm_method}
 \end{equation}
 
-The perturbation budget $\epsilon$ is varied to study the relationship between perturbation magnitude and attack success rate. For MNIST, typical values are $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10, typical values are $\epsilon \in \{2/255, 4/255, 8/255\}$.
+I varied the perturbation budget $\epsilon$ to see how the attack success rate changes with perturbation size. For MNIST the typical values used are $\epsilon \in \{0.1, 0.2, 0.3\}$, and for CIFAR-10 they are $\epsilon \in \{2/255, 4/255, 8/255\}$.
 
 \subsection{Basic Iterative Method / Projected Gradient Descent (BIM/PGD)}
 
-The iterative attack is implemented as:
+The iterative version of the attack works as follows:
 
 \begin{equation}
     x^{adv}_{t+1} = \Pi_{x,\epsilon}\left(x^{adv}_t + \alpha \cdot \text{sign}(\nabla_x J(\theta, x^{adv}_t, y))\right)
@@ -85,13 +85,13 @@ where $\Pi_{x,\epsilon}$ projects the result back into the $\epsilon$-ball aroun
 
 \subsection{DeepFool}
 
-DeepFool~\cite{moosavidezfooli2016deepfool} is implemented as an iterative algorithm that finds the minimal perturbation to cross the nearest decision boundary. The algorithm linearizes the classifier at each step and computes the minimum perturbation to the closest hyperplane.
+DeepFool~\cite{moosavidezfooli2016deepfool} takes a different approach from FGSM and PGD. Instead of working with a fixed perturbation budget, it tries to find the smallest possible perturbation that will make the model change its prediction. It does this by linearizing the classifier at each step and computing how far the input is from the nearest decision boundary.
 
-The DeepFool pseudocode and implementation details are presented in Chapter~\ref{ch:implementation}.
+I describe the full pseudocode and implementation details in Chapter~\ref{ch:implementation}.
 
 \subsection{(Optional) Carlini-Wagner Attack}
 
-If computational resources permit, the C\&W $L_2$ attack~\cite{carlini2017towards} will be implemented:
+If time and computational resources allow, the C\&W $L_2$ attack~\cite{carlini2017towards} could also be implemented:
 
 \begin{equation}
     \min_\delta \|\delta\|_2 + c \cdot f(x + \delta)
@@ -104,7 +104,7 @@ where $f$ is chosen such that $f(x') \leq 0$ implies misclassification.
 
 \subsection{FGSM Adversarial Training}
 
-For MNIST, FGSM-based adversarial training is applied following~\cite{goodfellow2015explaining}:
+For MNIST, I applied FGSM-based adversarial training following the approach in~\cite{goodfellow2015explaining}:
 
 \begin{enumerate}
     \item For each mini-batch, generate adversarial examples using FGSM
@@ -114,7 +114,7 @@ For MNIST, FGSM-based adversarial training is applied following~\cite{goodfellow
 
 \subsection{PGD Adversarial Training}
 
-For CIFAR-10, PGD-based adversarial training is applied following~\cite{madry2018towards}:
+For CIFAR-10, I used PGD-based adversarial training following the method from~\cite{madry2018towards}:
 
 \begin{enumerate}
     \item For each mini-batch, generate adversarial examples using multi-step PGD
@@ -126,7 +126,7 @@ The specific training hyperparameters used for both standard and adversarial tra
 
 \section{Evaluation Metrics}
 
-For each configuration (model, dataset, attack, defense), the following metrics are measured:
+For every combination of model, dataset, attack, and defense, I measured the following:
 
 \subsection{Accuracy Metrics}
 
@@ -163,7 +163,7 @@ Table~\ref{tab:methodology_comparison} summarizes the planned experimental confi
 
 \section{Tools and Technologies}
 
-The implementation uses the following tools:
+I used the following tools and technologies for the implementation:
 
 \begin{itemize}
     \item \textbf{Python 3.x:} Primary programming language
@@ -175,4 +175,4 @@ The implementation uses the following tools:
 
 \section{Summary}
 
-This methodology provides a systematic framework for studying adversarial attacks and defenses. By implementing multiple attacks on standard benchmarks and evaluating adversarial training, the research will provide practical insights into the robustness of deep neural networks. The following chapter describes the implementation details of this methodology.
+To sum up, the methodology I described here gives a structured way to study adversarial attacks and defenses. By implementing multiple attacks on standard benchmarks and testing adversarial training as a defense, I aim to get practical insights into how robust (or fragile) deep neural networks really are. The next chapter goes into the implementation details of everything described above.
