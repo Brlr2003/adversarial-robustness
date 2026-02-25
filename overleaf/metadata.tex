@@ -33,9 +33,9 @@
 
 % Abstract (English)
 \abstract{
-Deep learning models can be fooled by adversarial examples --- inputs with small, carefully chosen perturbations that are imperceptible to humans but cause confident misclassification. This vulnerability has direct implications for safety-critical applications such as autonomous driving, biometric authentication, and cybersecurity.
+Deep learning models, despite their strong performance on image classification and other tasks, are vulnerable to adversarial examples: inputs modified with tiny, human-imperceptible perturbations that cause confident misclassification. This is a practical concern for autonomous driving, biometrics, and security applications.
 
-This thesis investigates adversarial attacks on image classifiers through hands-on implementation and experimentation. A ResNet-18 is trained on CIFAR-10, and three white-box attacks --- FGSM, PGD, and DeepFool --- are implemented from scratch and evaluated. The standard model achieves 94.1\% clean accuracy; a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. PGD-based adversarial training yields a robust model that retains 45.1\% accuracy under the same attack, at the cost of 10.2 percentage points in clean accuracy. DeepFool reveals that the standard model's decision boundaries sit only 0.248 $L_2$ distance from the data on average; adversarial training moves them to 0.892. These findings quantify both the severity of adversarial vulnerability in deep networks and the effectiveness of adversarial training as a defense.
+In this thesis, I implement three white-box adversarial attacks --- FGSM, PGD, and DeepFool --- from scratch and evaluate them on a ResNet-18 trained on CIFAR-10. The standard model reaches 94.1\% clean accuracy but collapses to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. I then apply PGD-based adversarial training, which produces a model that holds 45.1\% accuracy under the same attack while losing 10.2 percentage points of clean accuracy. DeepFool analysis shows the standard model's decision boundaries lie just 0.248 $L_2$ from the data on average; after adversarial training, this distance increases to 0.892. The results show both how severe adversarial vulnerability is and that adversarial training offers a real, if costly, defense.
 }
 
 % Keywords (English)

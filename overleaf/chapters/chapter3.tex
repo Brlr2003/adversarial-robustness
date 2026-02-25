@@ -3,31 +3,31 @@
 
 \section{Introduction}
 
-This chapter describes the experimental setup. I implemented three attack algorithms, ran them on two standard benchmarks, and then applied adversarial training as a defense. Below I go through each component: datasets, models, attack formulations, defense strategy, and evaluation metrics.
+In this chapter I lay out how the experiments were structured. Three attack algorithms, two benchmark datasets, and adversarial training as the defense. I go through each piece below: datasets, models, the math behind each attack, the defense setup, and evaluation metrics.
 
 \section{Research Design}
 
-The work was organized into four phases:
+I organized the work into four phases:
 
 \begin{enumerate}
-    \item \textbf{Model Training:} Train baseline convolutional neural networks on benchmark datasets and establish clean accuracy numbers.
+    \item \textbf{Model Training:} Train baseline CNNs on the benchmark datasets. Get clean accuracy numbers.
 
-    \item \textbf{Attack Implementation:} Implement FGSM, BIM/PGD, and DeepFool as white-box attacks and measure their effectiveness against the trained baselines.
+    \item \textbf{Attack Implementation:} Code up FGSM, BIM/PGD, and DeepFool. Run them against the baselines.
 
-    \item \textbf{Defense Application:} Retrain models using PGD-based adversarial training and evaluate the resulting robustness gains.
+    \item \textbf{Defense Application:} Apply PGD-based adversarial training. See what happens to robustness.
 
-    \item \textbf{Comparative Analysis:} Compare all attacks and both models (standard and robust) across multiple metrics.
+    \item \textbf{Comparative Analysis:} Put everything in tables. Compare attacks and models across metrics.
 \end{enumerate}
 
 \section{Datasets}
 
 \subsection{MNIST}
 
-MNIST~\cite{lecun1998mnist} contains 70,000 grayscale images of handwritten digits (0--9), split into 60,000 training and 10,000 test images, each $28 \times 28$ pixels. It is a simple benchmark --- models can reach high accuracy with very little effort --- so I used it primarily for debugging and verifying that the attack implementations were correct before running the full experiments on CIFAR-10.
+MNIST~\cite{lecun1998mnist} is 70,000 grayscale images of handwritten digits, 0 through 9. The training set has 60,000 images and the test set 10,000. Each image is $28 \times 28$ pixels. It is an easy dataset --- most models solve it without much trouble. I used MNIST mainly for debugging. When you are writing an attack from scratch, you want to test it on something simple first to make sure it even works before moving on to harder problems.
 
 \subsection{CIFAR-10}
 
-CIFAR-10 consists of 60,000 color images in 10 classes (cars, birds, cats, etc.), with 50,000 for training and 10,000 for testing. Each image is $32 \times 32 \times 3$. It is considerably harder than MNIST, and the models needed for good performance are correspondingly more complex. This made it the right choice for the main experiments --- the attacks and defenses are more interesting to evaluate when the underlying classification problem is non-trivial.
+CIFAR-10 is 60,000 color images in 10 classes (cars, birds, cats, and so on), split 50,000/10,000 for training and testing. Images are $32 \times 32$ with 3 color channels. Much harder than MNIST. You need a real model to get good accuracy here, which is exactly the point --- I wanted the attacks and defenses to be evaluated on something non-trivial.
 
 % TODO: Add figure showing sample images from datasets
 % \begin{figure}[htbp]
@@ -41,7 +41,7 @@ CIFAR-10 consists of 60,000 color images in 10 classes (cars, birds, cats, etc.)
 
 \subsection{MNIST Model}
 
-For MNIST, a simple CNN was sufficient:
+For MNIST, a small CNN:
 
 \begin{itemize}
     \item Conv2D (32 filters, 3$\times$3) $\rightarrow$ ReLU $\rightarrow$ Conv2D (64 filters, 3$\times$3) $\rightarrow$ ReLU
@@ -50,102 +50,102 @@ For MNIST, a simple CNN was sufficient:
     \item Dense (10) $\rightarrow$ Softmax
 \end{itemize}
 
+Nothing special. Enough to get good accuracy on MNIST.
+
 \subsection{CIFAR-10 Model}
 
-For CIFAR-10, I used a ResNet-18 adapted for $32 \times 32$ input resolution. The standard ResNet-18 was designed for $224 \times 224$ ImageNet images, so some modifications were necessary --- the details are in Chapter~\ref{ch:implementation}.
+For CIFAR-10 I went with ResNet-18, adapted for $32 \times 32$ inputs. The standard ResNet-18 expects $224 \times 224$ images so modifications were needed. I describe exactly what I changed in Chapter~\ref{ch:implementation}.
 
 \section{Attack Implementations}
 
 \subsection{Fast Gradient Sign Method (FGSM)}
 
-The FGSM attack follows the standard formulation from Equation~\ref{eq:fgsm_method}:
+FGSM follows the formulation in Equation~\ref{eq:fgsm_method}:
 
 \begin{equation}
     x^{adv} = x + \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y))
     \label{eq:fgsm_method}
 \end{equation}
 
-I tested several perturbation budgets for each dataset. For MNIST: $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10: $\epsilon \in \{2/255, 4/255, 8/255\}$.
+I tested multiple values of $\epsilon$. For MNIST: $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10: $\epsilon \in \{2/255, 4/255, 8/255\}$. The idea is to sweep over perturbation sizes and see how the attack success rate changes.
 
 \subsection{Basic Iterative Method / Projected Gradient Descent (BIM/PGD)}
 
-The iterative variant applies FGSM repeatedly with a smaller step size, projecting back onto the $\epsilon$-ball after each step:
+The iterative version --- apply FGSM repeatedly with a smaller step and project back:
 
 \begin{equation}
     x^{adv}_{t+1} = \Pi_{x,\epsilon}\left(x^{adv}_t + \alpha \cdot \text{sign}(\nabla_x J(\theta, x^{adv}_t, y))\right)
     \label{eq:pgd_method}
 \end{equation}
 
-The projection $\Pi_{x,\epsilon}$ ensures the perturbation stays within the allowed $L_\infty$ budget. Key parameters:
+$\Pi_{x,\epsilon}$ projects back into the $\epsilon$-ball. The parameters I varied:
 \begin{itemize}
-    \item Step size $\alpha$: typically $\epsilon/10$ or $\epsilon/4$
-    \item Number of iterations: 10, 20, or 40
-    \item Random initialization within the $\epsilon$-ball (this is what distinguishes PGD from BIM)
+    \item Step size $\alpha$: either $\epsilon/10$ or $\epsilon/4$
+    \item Iterations: 10, 20, or 40 steps
+    \item Random initialization (the PGD variant starts from a random point in the $\epsilon$-ball, BIM starts from the clean input)
 \end{itemize}
 
 \subsection{DeepFool}
 
-DeepFool~\cite{moosavidezfooli2016deepfool} operates on a different principle entirely. Instead of perturbing within a fixed budget, it seeks the smallest perturbation that will cause the model to change its prediction. At each step it linearizes the classifier and estimates the distance to the nearest decision boundary. This process repeats until the prediction flips or an iteration limit is reached.
-
-The full pseudocode and implementation details are in Chapter~\ref{ch:implementation}.
+DeepFool~\cite{moosavidezfooli2016deepfool} works on a completely different principle. No fixed epsilon budget. Instead it finds the \emph{smallest} perturbation that flips the prediction, by linearizing the classifier at each step and computing the distance to the nearest decision boundary. The pseudocode and details are in Chapter~\ref{ch:implementation}.
 
 \subsection{(Optional) Carlini-Wagner Attack}
 
-If computational resources had allowed it, the C\&W $L_2$ attack~\cite{carlini2017towards} would also have been interesting to include:
+I had originally planned to also include C\&W~\cite{carlini2017towards}:
 
 \begin{equation}
     \min_\delta \|\delta\|_2 + c \cdot f(x + \delta)
 \end{equation}
 
-where $f$ is designed so that $f(x') \leq 0$ implies misclassification.
+where $f$ is chosen so that $f(x') \leq 0$ means misclassification. Unfortunately it proved too computationally expensive to run on my hardware within the time constraints.
 
 
 \section{Defense: Adversarial Training}
 
 \subsection{FGSM Adversarial Training}
 
-For the MNIST experiments, I used FGSM-based adversarial training following~\cite{goodfellow2015explaining}:
+For MNIST I used FGSM-based adversarial training, following~\cite{goodfellow2015explaining}:
 
 \begin{enumerate}
-    \item Generate FGSM adversarial examples for each mini-batch
-    \item Combine them with clean examples at a 50/50 ratio
-    \item Update model parameters on the combined batch
+    \item Generate FGSM adversarial examples from each mini-batch
+    \item Mix adversarial and clean examples 50/50
+    \item Train on the mixed batch
 \end{enumerate}
 
 \subsection{PGD Adversarial Training}
 
-For CIFAR-10, the defense is PGD-based adversarial training as described in~\cite{madry2018towards}:
+For CIFAR-10, the serious defense: PGD-based adversarial training from~\cite{madry2018towards}.
 
 \begin{enumerate}
-    \item For each mini-batch, generate adversarial examples via multi-step PGD
-    \item Train on the adversarial examples (or a mix of adversarial and clean)
-    \item Perturbation budget: $\epsilon = 8/255$ under the $L_\infty$ norm
+    \item At each mini-batch, generate PGD adversarial examples (multi-step)
+    \item Train on the adversarial examples
+    \item Perturbation budget of $\epsilon = 8/255$ under $L_\infty$
 \end{enumerate}
 
-The full set of training hyperparameters is reported in Chapter~\ref{ch:results}.
+Full hyperparameters are in Chapter~\ref{ch:results}.
 
 \section{Evaluation Metrics}
 
-The following metrics were tracked for every experiment:
+For each experiment:
 
 \subsection{Accuracy Metrics}
 
 \begin{itemize}
-    \item \textbf{Clean Accuracy:} Accuracy on the unperturbed test set.
-    \item \textbf{Robust Accuracy:} Accuracy on adversarially perturbed inputs, measured at each $\epsilon$ value.
-    \item \textbf{Attack Success Rate:} The fraction of correctly-classified clean samples that get misclassified after perturbation.
+    \item \textbf{Clean Accuracy:} How well the model does on normal, unperturbed test images.
+    \item \textbf{Robust Accuracy:} How well it does when the test images are adversarially perturbed. Measured at each $\epsilon$.
+    \item \textbf{Attack Success Rate:} Of the images the model gets right on clean data, what fraction does the attack flip?
 \end{itemize}
 
 \subsection{Perturbation Metrics}
 
 \begin{itemize}
-    \item \textbf{Average $L_2$ norm:} Mean Euclidean distance between clean and adversarial examples.
-    \item \textbf{Average $L_\infty$ norm:} Mean of the maximum per-pixel perturbation across the test set.
+    \item \textbf{Average $L_2$ norm:} Mean Euclidean distance between the clean and adversarial images.
+    \item \textbf{Average $L_\infty$ norm:} The mean of the max per-pixel change across test images.
 \end{itemize}
 
 \subsection{Comparison Table}
 
-Table~\ref{tab:methodology_comparison} summarizes the experimental configurations.
+Table~\ref{tab:methodology_comparison} summarizes what was run.
 
 \begin{table}[htbp]
     \centering
@@ -163,16 +163,14 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
 
 \section{Tools and Technologies}
 
-The implementation used the following:
-
 \begin{itemize}
-    \item \textbf{Python 3.x:} Primary language
-    \item \textbf{PyTorch:} Deep learning framework
-    \item \textbf{Custom implementations:} All attacks written from scratch (no adversarial ML libraries)
-    \item \textbf{NumPy, Matplotlib:} Numerical computation and plotting
-    \item \textbf{Hardware:} Apple M4 Pro with Metal Performance Shaders (MPS) as the GPU backend
+    \item \textbf{Python 3.x}
+    \item \textbf{PyTorch:} for all model and training code
+    \item \textbf{Custom attack implementations:} no external adversarial ML libraries used
+    \item \textbf{NumPy, Matplotlib:} for data handling and plots
+    \item \textbf{Hardware:} Apple M4 Pro, MPS (Metal Performance Shaders) backend for GPU
 \end{itemize}
 
 \section{Summary}
 
-The experimental methodology described above provides a controlled framework for comparing adversarial attacks and evaluating adversarial training as a defense. Everything runs on the same models, same datasets, same codebase. The next chapter covers the implementation.
+That is the setup. Standard datasets, standard model, three attacks implemented from scratch, PGD adversarial training for defense, and a set of metrics to evaluate everything. The next chapter gets into the implementation details.

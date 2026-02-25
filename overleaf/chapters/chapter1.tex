@@ -3,15 +3,15 @@
 
 \section{Introduction}
 
-Deep neural networks have, over the last decade or so, become the default tool for a wide range of tasks --- image classification, speech recognition, natural language processing, and so on. Their performance on benchmarks is often remarkable. But there is a catch that has troubled the research community since at least 2014: these networks can be fooled by tiny, almost invisible perturbations to their inputs~\cite{szegedy2014intriguing,goodfellow2015explaining}. Add a small amount of carefully constructed noise to an image --- noise that no human would ever notice --- and the network confidently produces the wrong output. These are adversarial examples, and their existence raises serious questions about deploying neural networks in any setting where reliability matters.
+Neural networks have gotten very good at a lot of things. Image classification, speech, translation --- the list keeps growing, and the benchmarks keep improving. But there is something strange going on underneath all of that performance. If you take an image that a network classifies correctly and add a tiny bit of noise to it --- noise that is structured in a particular way, but so small you literally cannot see it --- the network will suddenly give a completely wrong answer. And not just wrong: wrong with very high confidence~\cite{szegedy2014intriguing,goodfellow2015explaining}. These perturbed inputs are called adversarial examples.
 
-The problem is not purely theoretical. Kurakin et al.~\cite{kurakin2016adversarialphysical} demonstrated that adversarial perturbations survive in the physical world: printed images, modified road signs, and so on. This is concerning. Autonomous vehicles, medical imaging pipelines, security screening systems --- all of these rely increasingly on deep learning, and all of them operate in environments where an adversary could, at least in principle, exploit this vulnerability. A substantial body of work has emerged around understanding and mitigating the problem~\cite{yuan2019adversarial,ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
+This is not just a lab curiosity. Kurakin et al.~\cite{kurakin2016adversarialphysical} showed that you can print adversarial images on paper, hold them up to a camera, and the network still gets fooled. People have done similar things with road signs. When you think about the fact that deep learning is being deployed in self-driving cars, in medical imaging systems, in security checkpoints --- well, it starts to feel like a real problem, not just a theoretical one. And indeed a lot of research effort has gone into both understanding why this happens and figuring out what to do about it~\cite{yuan2019adversarial,ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
 
 \section{Background and Motivation}
 
-Szegedy et al.~\cite{szegedy2014intriguing} were the first to document adversarial examples systematically. Their paper showed that imperceptible perturbations could cause misclassification in state-of-the-art networks, which was unexpected at the time. Goodfellow et al.~\cite{goodfellow2015explaining} then proposed an explanation: the high-dimensional linear behavior of these networks makes them inherently susceptible to such attacks. To demonstrate this, they introduced the Fast Gradient Sign Method (FGSM) --- a single gradient step that generates adversarial examples cheaply and effectively.
+The discovery of adversarial examples goes back to Szegedy et al.~\cite{szegedy2014intriguing}. Their paper was one of the first to systematically show that well-trained neural networks can be tricked by perturbations so small they are basically invisible. It was a surprising result at the time. Goodfellow et al.~\cite{goodfellow2015explaining} followed up with an explanation that I find quite intuitive: deep networks are too linear in high-dimensional spaces. Small perturbations, when aligned with the gradient, add up across thousands of dimensions and produce large changes in the output. They also introduced FGSM (Fast Gradient Sign Method), which can craft an adversarial example with a single gradient computation.
 
-What motivated me to pursue this particular topic is fairly simple. If we want to use deep learning for anything consequential --- say, diagnosing disease from medical scans, or making decisions in a self-driving car --- then we had better understand how easy it is to break these models. And not just in theory. I wanted to actually implement the attacks, run them, see the numbers, and get a feel for how bad things really are. That seemed like a necessary starting point before anyone can seriously talk about building robust systems.
+So why did I pick this topic? Honestly, it was a practical concern. If deep learning is going to be used for things that actually matter --- medical diagnoses, autonomous vehicles, security --- then somebody needs to sit down and carefully measure just how fragile these systems are. Not in the abstract. With actual models, actual attacks, actual numbers. That is what I wanted to do with this thesis.
 
 % TODO: Consider adding a figure showing adversarial example concept
 % \begin{figure}[htbp]
@@ -23,45 +23,45 @@ What motivated me to pursue this particular topic is fairly simple. If we want t
 
 \section{Problem Statement}
 
-The setting is standard image classification with convolutional neural networks, trained on MNIST and CIFAR-10. Within this setting, this thesis addresses three questions:
+I work with convolutional neural networks trained on MNIST and CIFAR-10 --- nothing fancy, just standard image classification setups. The thesis tries to answer three questions:
 
 \begin{enumerate}
-    \item How vulnerable are these models to common white-box attacks --- FGSM, BIM/PGD, and DeepFool --- across a range of perturbation budgets?
-    \item Does adversarial training (specifically PGD-based) provide meaningful robustness, and what does it cost in terms of clean accuracy?
-    \item How do the three attacks compare in terms of success rate, perturbation magnitude, and computational overhead?
+    \item How badly do common white-box attacks (FGSM, BIM/PGD, DeepFool) break these models, and what happens as you increase the perturbation budget?
+    \item Can adversarial training (PGD-based) actually fix this? And if so, how much clean accuracy do you give up?
+    \item When you put all three attacks side by side, how do they compare? Success rate, perturbation size, speed --- the full picture.
 \end{enumerate}
 
-The scope is limited to evasion attacks at test time. Image classification serves as the concrete domain for investigating these questions.
+I am only looking at evasion attacks at test time. Image classification is the testbed.
 
 \section{Research Objectives}
 
-Much of the published work on adversarial attacks is theoretical or uses existing toolkits. I wanted to do something more hands-on --- build the attacks from scratch, run them myself on real models, and understand the practical details that papers tend to gloss over. Concretely, my objectives were:
+A lot of papers in this area stay fairly theoretical, or they use off-the-shelf attack libraries and just report numbers. I wanted to go deeper than that. Build everything from scratch, understand the implementation details, see what actually happens when you run these attacks. My specific objectives:
 
 \begin{itemize}
-    \item Implement FGSM, BIM/PGD, and DeepFool from the ground up and evaluate them on MNIST and CIFAR-10.
-    \item Sweep over different perturbation budgets to characterize how model accuracy degrades as a function of attack strength.
-    \item Apply PGD-based adversarial training and quantify the resulting trade-off between clean and robust accuracy.
-    \item Present all numbers in a unified comparison so the relative strengths of each attack are visible at a glance.
+    \item Write my own implementations of FGSM, BIM/PGD, and DeepFool and test them on both MNIST and CIFAR-10.
+    \item Vary the perturbation budget systematically and measure how accuracy degrades --- I wanted to see the full curve, not just one data point.
+    \item Train a model with PGD-based adversarial training and measure both what you gain (robustness) and what you lose (clean accuracy).
+    \item Lay everything out in tables so you can see the trade-offs at a glance.
 \end{itemize}
 
 \section{Contributions}
 
-This thesis makes the following contributions:
+The contributions of this thesis:
 
 \begin{enumerate}
-    \item A side-by-side empirical comparison of three adversarial attacks (FGSM, PGD, DeepFool) on a single architecture, using consistent evaluation methodology. The comparison reveals substantial differences in attack effectiveness and computational cost.
-    \item A practical demonstration of PGD-based adversarial training, with detailed measurements of the accuracy--robustness trade-off.
-    \item A reproducible experimental framework --- code, training pipelines, evaluation scripts --- that connects the theoretical background to concrete results.
+    \item A head-to-head comparison of three classic adversarial attacks on one model, with consistent evaluation across all of them. The comparison shows pretty clearly how they differ in effectiveness and cost.
+    \item A detailed look at what adversarial training does to a model's robustness profile, including the trade-offs that come with it.
+    \item An experimental framework --- code, scripts, configs --- that ties the theory to actual reproducible results.
 \end{enumerate}
 
 \section{Thesis Organization}
 
-\textbf{Chapter 2} reviews the relevant literature: the theory of adversarial examples, the main attack algorithms, and existing defense strategies.
+\textbf{Chapter 2} covers the literature: why adversarial examples exist, what attacks people have developed, what defenses are out there.
 
-\textbf{Chapter 3} lays out the methodology --- the mathematical formulations, datasets, model architectures, and experimental design.
+\textbf{Chapter 3} describes the methodology. The math behind each attack, the datasets and models I used, how I set up the experiments.
 
-\textbf{Chapter 4} describes the implementation in detail: code structure, engineering decisions, and the tools I used.
+\textbf{Chapter 4} goes into the implementation. Code structure, engineering decisions, tools.
 
-\textbf{Chapter 5} presents all experimental results: attack evaluations, adversarial training outcomes, and comparative analysis.
+\textbf{Chapter 5} has all the results. Attack evaluations, adversarial training numbers, comparisons.
 
-\textbf{Chapter 6} discusses conclusions, limitations, and potential directions for future work.
+\textbf{Chapter 6} wraps up with conclusions, limitations, and ideas for future work.

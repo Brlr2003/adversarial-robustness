@@ -3,76 +3,78 @@
 
 \section{Conclusion}
 
-This thesis set out to answer a simple question: how vulnerable are standard deep learning models to adversarial attacks, and can adversarial training do anything about it? To find out, I implemented three white-box attacks --- FGSM, PGD, and DeepFool --- tested them against a ResNet-18 trained on CIFAR-10, and then evaluated PGD-based adversarial training as a defense.
+The question I started with was straightforward: how vulnerable are deep neural networks to adversarial attacks, and does adversarial training actually help? I implemented three attacks --- FGSM, PGD, DeepFool --- tested them on a ResNet-18 trained on CIFAR-10, and then applied PGD-based adversarial training.
 
-The answer, in short: standard models are extremely fragile, and adversarial training helps substantially but not for free. My ResNet-18 achieves 94.1\% accuracy on clean data. A 20-step PGD attack at $\epsilon = 8/255$ --- a perturbation invisible to the human eye --- drops that to 1.2\%. FGSM, being a weaker attack, only gets the model down to 18.3\%, which would give a misleadingly optimistic picture of the model's security if used as the sole evaluation. The gap between these two numbers (18.3\% vs 1.2\%) illustrates why multi-step attacks like PGD are necessary for honest robustness evaluation.
+The short answer: standard models are extremely fragile, and adversarial training helps a lot but costs you something.
 
-Adversarial training improves the picture considerably. The PGD-trained model achieves 45.1\% robust accuracy under PGD attack, up from near-zero, while giving up 10.2 percentage points of clean accuracy. For safety-critical applications, this seems like a reasonable trade-off.
+My ResNet-18 gets 94.1\% on clean images. PGD with 20 steps at $\epsilon = 8/255$ drops that to 1.2\%. You cannot see the perturbation. The model is basically useless. And if I had only tested with FGSM, I would have thought the model still had 18.3\% accuracy --- bad, but not catastrophic. PGD tells the real story: 1.2\%. That 16-point gap between FGSM and PGD is exactly why people insist on multi-step attacks for serious evaluation.
 
-One additional observation: the adversarially trained model produces noticeably better-calibrated confidence scores. The standard model outputs near-100\% confidence on its wrong adversarial predictions. The robust model spreads its probability mass more evenly, which means you can actually tell when it is uncertain. In practice, this calibration property could be quite valuable.
+Adversarial training: the robust model gets 45.1\% under PGD. That is up from 1.2\%. The cost is 10.2 percentage points of clean accuracy (down from 94.1\% to 83.9\%). Whether that trade-off is worth it depends entirely on the application. For anything safety-related, I think it clearly is.
+
+One thing I did not expect was the confidence calibration effect. The standard model does not just get adversarial examples wrong --- it gets them wrong with 99\% confidence. It has no idea it is being attacked. The adversarially trained model, by contrast, gives more reasonable confidence scores. It knows when something is off. That property alone might be worth the accuracy penalty in some applications.
 
 \section{Research Contributions}
 
-Concretely, this thesis contributes the following:
+What this thesis contributes:
 
 \begin{enumerate}
-    \item \textbf{Attack comparison:} A side-by-side evaluation of FGSM, PGD, and DeepFool on the same model with the same protocol. PGD was the strongest attack (1.2\% surviving accuracy at $\epsilon = 8/255$). FGSM was substantially weaker (18.3\%). DeepFool achieved a 91.1\% fooling rate with perturbations $5.4\times$ smaller in $L_2$ norm than FGSM/PGD.
+    \item \textbf{Attack comparison:} FGSM, PGD, and DeepFool evaluated side by side on one model, same evaluation setup. PGD is the strongest (1.2\% surviving accuracy), FGSM is weaker (18.3\%), and DeepFool fools 91.1\% of images with perturbations that are $5.4\times$ smaller in $L_2$.
 
-    \item \textbf{Adversarial training evaluation:} The adversarially trained model achieved 45.1\% robust accuracy under PGD and 83.9\% clean accuracy --- numbers that match the benchmarks reported by Madry et al., confirming the correctness of my implementation.
+    \item \textbf{Adversarial training numbers:} 45.1\% PGD robustness, 83.9\% clean accuracy. These match Madry et al.'s benchmarks.
 
-    \item \textbf{Open-source framework:} The complete codebase is publicly available on GitHub: three attack implementations, two training pipelines, MLflow integration, and an interactive Streamlit demo on HuggingFace Spaces. The modular design means adding a new attack is a matter of writing one Python file.
+    \item \textbf{Open-source code:} Everything is on GitHub --- attacks, training, evaluation, and a live demo on HuggingFace Spaces. Modular design. Adding a new attack means writing one file.
 
-    \item \textbf{Calibration observation:} The robust model not only gets adversarial examples right more often --- it also produces more honest confidence scores. The standard model says ``99\% cat'' when it is wrong; the robust model says ``55\% cat'' when it is right.
+    \item \textbf{Confidence calibration:} The robust model not only gets adversarial examples right more often, it also produces more calibrated confidence scores. Standard model: ``99\% cat'' on a wrong answer. Robust model: ``55\% cat'' on a right answer. That second one is much more useful.
 \end{enumerate}
 
 \section{Limitations}
 
-This work has clear limitations:
+I want to be upfront about the limitations:
 
 \begin{enumerate}
-    \item \textbf{Only CIFAR-10.} Images are $32 \times 32$ with 10 classes. An $\epsilon = 8/255$ perturbation on a 32-pixel image is perceptually different from the same $\epsilon$ on a 224-pixel image. I cannot claim these results generalize to ImageNet-scale data without running those experiments.
+    \item \textbf{CIFAR-10 only.} $32 \times 32$ images, 10 classes. $\epsilon = 8/255$ on a 32-pixel image and on a 224-pixel image are not the same thing perceptually. I cannot say these results transfer to ImageNet without running those experiments.
 
-    \item \textbf{Only ResNet-18.} Other architectures --- Vision Transformers, for instance --- may exhibit different vulnerability profiles. I did not test any alternatives.
+    \item \textbf{ResNet-18 only.} Maybe Vision Transformers would be more robust, or less. I do not know. I did not test them.
 
-    \item \textbf{Only white-box $L_\infty$.} No black-box attacks, no transfer attacks, no $L_2$ or $L_0$ threat models. I also did not implement Carlini-Wagner due to its computational requirements on my hardware.
+    \item \textbf{White-box $L_\infty$ only.} No black-box, no transfer attacks, no $L_2$ or $L_0$ threat models. Carlini-Wagner was too expensive to run on my laptop.
 
-    \item \textbf{Only one defense.} PGD adversarial training is one option among several. Certified defenses, randomized smoothing, and input preprocessing were not evaluated.
+    \item \textbf{One defense.} PGD adversarial training is not the only game in town. Certified defenses, randomized smoothing, input preprocessing --- all worth testing but I did not have time.
 
-    \item \textbf{Hardware constraints.} All experiments ran on an Apple M4 Pro laptop. Adversarial training took 4.5 hours for 50 epochs, leaving little room for hyperparameter exploration.
+    \item \textbf{Hardware.} Apple M4 Pro. 4.5 hours for adversarial training on CIFAR-10. Not a lot of room for hyperparameter tuning.
 \end{enumerate}
 
 \section{Future Work}
 
-Several extensions would strengthen and broaden these results.
+Things I would do next, given more time:
 
 \subsection{Short-term}
 
 \begin{itemize}
-    \item \textbf{Add Carlini-Wagner attack.} C\&W is widely considered the gold standard for evaluating defenses. Testing the adversarially trained model against it would provide a more complete robustness picture.
+    \item \textbf{Carlini-Wagner.} It is the standard for breaking defenses. I want to know if my robust model survives it.
 
-    \item \textbf{MNIST experiments.} Running the same evaluation pipeline on MNIST would enable comparison with a large body of existing results and show how dataset complexity affects vulnerability.
+    \item \textbf{MNIST experiments.} Would provide direct comparison with a lot of existing work. Also interesting to see whether a simpler dataset means more or less vulnerability.
 
-    \item \textbf{Transferability tests.} Do adversarial examples crafted for the standard model transfer to the robust model? This is relevant to black-box threat scenarios and I did not test it.
+    \item \textbf{Transferability.} If I craft adversarial examples against the standard model, do they also fool the robust one? Important for black-box scenarios.
 
-    \item \textbf{Multiple PGD restarts.} I used a single random restart for evaluation. Multiple restarts would give tighter robustness bounds.
+    \item \textbf{More PGD restarts.} One restart gives a lower bound on vulnerability. Multiple restarts tighten that bound.
 \end{itemize}
 
 \subsection{Long-term}
 
 \begin{itemize}
-    \item \textbf{ImageNet scale.} The key question is whether these findings hold on larger images, more classes, and bigger models.
+    \item \textbf{ImageNet.} Bigger images, more classes, bigger models. Does everything still hold?
 
-    \item \textbf{Certified defenses.} Randomized smoothing provides formal robustness guarantees. Comparing it with the empirical approach taken here would be informative.
+    \item \textbf{Certified defenses.} Randomized smoothing gives formal guarantees. Would be a good complement to the empirical approach here.
 
-    \item \textbf{Domain-specific evaluation.} Medical imaging and autonomous driving are the application areas where adversarial robustness matters most. Experiments on X-ray images or traffic sign datasets would be more directly relevant than CIFAR-10.
+    \item \textbf{Domain-specific testing.} CIFAR-10 cats and dogs are fine for benchmarking, but the real applications are medical imaging and autonomous driving. X-ray images, traffic signs --- that is where adversarial robustness actually matters.
 
-    \item \textbf{Architecture comparison.} The question of whether Vision Transformers are more or less vulnerable than CNNs does not have a settled answer. My framework could be extended to investigate this.
+    \item \textbf{Architectures.} Vision Transformers versus CNNs --- who is more robust? The literature does not have a clear answer. My framework could be extended to find out.
 
-    \item \textbf{Faster adversarial training.} 4.5 hours for 50 epochs on CIFAR-10 is already slow. Methods like Adversarial Training for Free~\cite{shafahi2019adversarial} could reduce the overhead significantly.
+    \item \textbf{Faster adversarial training.} 4.5 hours on CIFAR-10 is already painful. Methods like Adversarial Training for Free~\cite{shafahi2019adversarial} claim to cut the cost significantly.
 \end{itemize}
 
 \section{Final Remarks}
 
-Adversarial vulnerability remains one of the central unsolved problems in deploying deep learning to the real world. The experiments in this thesis make the severity of the problem concrete: a 94\% accurate model can be reduced to near-zero by perturbations that are invisible to the human eye. Adversarial training offers a practical defense, but it comes with a cost in both clean accuracy and computational budget.
+Adversarial vulnerability is, as far as I can tell, one of the most important unsolved problems in deploying deep learning to the real world. What these experiments show is how bad things really are: a 94\%-accurate model reduced to 1.2\% by an invisible perturbation. But they also show that we are not helpless --- adversarial training genuinely works, even if it is not free.
 
-As deep learning continues its expansion into autonomous vehicles, medical diagnostics, security systems, and other high-stakes domains, addressing adversarial robustness will only grow more urgent. I hope the implementations, experimental results, and interactive demo from this work can be useful --- both as a practical reference and as an illustration of why this line of research matters.
+Deep learning is increasingly used in places where mistakes have real consequences. Making these models robust to adversarial inputs is going to matter more and more. I hope the code, the results, and the demo from this thesis are useful to others working on this problem.
