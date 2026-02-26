@@ -33,9 +33,9 @@
 
 % Abstract (English)
 \abstract{
-Deep learning models, despite their strong performance on image classification and other tasks, are vulnerable to adversarial examples: inputs modified with tiny, human-imperceptible perturbations that cause confident misclassification. This is a practical concern for autonomous driving, biometrics, and security applications.
+Deep learning models achieve strong performance on image classification and related tasks, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This vulnerability raises practical concerns for applications in autonomous driving, biometrics, and security.
 
-In this thesis, I implement three white-box adversarial attacks --- FGSM, PGD, and DeepFool --- from scratch and evaluate them on a ResNet-18 trained on CIFAR-10. The standard model reaches 94.1\% clean accuracy but collapses to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. I then apply PGD-based adversarial training, which produces a model that holds 45.1\% accuracy under the same attack while losing 10.2 percentage points of clean accuracy. DeepFool analysis shows the standard model's decision boundaries lie just 0.248 $L_2$ from the data on average; after adversarial training, this distance increases to 0.892. The results show both how severe adversarial vulnerability is and that adversarial training offers a real, if costly, defense.
+In this thesis, we implement three white-box adversarial attacks --- FGSM, PGD, and DeepFool --- from scratch and evaluate them on a ResNet-18 trained on CIFAR-10. The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. We then apply PGD-based adversarial training, which produces a model that retains 45.1\% accuracy under the same attack at a cost of 10.2 percentage points of clean accuracy. DeepFool analysis reveals that the standard model's decision boundaries lie only 0.248 $L_2$ from the data on average; adversarial training increases this distance to 0.892. The results demonstrate both the severity of adversarial vulnerability and the effectiveness of adversarial training as a defense.
 }
 
 % Keywords (English)
@@ -53,11 +53,9 @@ Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër model
 
 % Acknowledgments
 \acknowledgments{
-I owe a great deal to my supervisor, Assoc. Prof. Dr. Arban Uka, who guided this work from start to finish. His deep knowledge of the subject and his willingness to challenge my ideas at every stage shaped both the research and my thinking about it. I am grateful for his patience and for the many hours he spent discussing this work with me.
+I would like to thank my supervisor, Assoc. Prof. Dr. Arban Uka, for his guidance throughout this work. His input shaped both the direction of the research and the way I approached the problems. Many of the ideas in this thesis came out of our discussions, and I am grateful for the time he invested.
 
-I also want to thank my family, who put up with a lot during my studies --- late nights, missed gatherings, and the general stress of thesis writing. Their support made all of this possible. My friends and colleagues at Epoka University made the experience more enjoyable than it otherwise would have been.
-
-Finally, I am thankful to Epoka University for giving me the opportunity to pursue this degree and for providing the resources that made the research possible.
+I also thank my family for their support and patience during my studies. Finally, I thank Epoka University for providing the opportunity and resources that made this research possible.
 }
 
 % Dedication (optional - uncomment if needed)
