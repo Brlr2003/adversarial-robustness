@@ -9,7 +9,7 @@ Deep neural networks achieve high accuracy on image classification, speech recog
 
 Szegedy et al.~\cite{szegedy2014intriguing} were the first to show that well-trained neural networks can be fooled by perturbations that are nearly invisible to humans. Goodfellow et al.~\cite{goodfellow2015explaining} offered an explanation rooted in the linear behavior of neural networks in high-dimensional input spaces: a small perturbation aligned with the gradient of the loss, applied across many dimensions, accumulates into a large change in the network's output. They introduced FGSM, a single-step attack that produces adversarial examples with one gradient computation. The simplicity and effectiveness of FGSM made it clear that adversarial vulnerability is not an edge case but a systematic property of these models.
 
-We chose this topic because we wanted to move beyond theoretical discussion and actually measure how fragile standard models are, what adversarial training costs, and how different attacks compare when evaluated under identical conditions. Implementing the attacks from scratch, rather than relying on existing libraries, was a deliberate choice --- it forced us to confront the implementation details that papers often leave out.
+I chose this topic because I wanted to move beyond theoretical discussion and actually measure how fragile standard models are, what adversarial training costs, and how different attacks compare when evaluated under identical conditions. Implementing the attacks from scratch, rather than relying on existing libraries, was a deliberate choice --- it forced me to confront the implementation details that papers often leave out.
 
 % TODO: Consider adding a figure showing adversarial example concept
 % \begin{figure}[htbp]
@@ -21,7 +21,7 @@ We chose this topic because we wanted to move beyond theoretical discussion and 
 
 \section{Problem Statement}
 
-We study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses three questions:
+I study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses three questions:
 
 \begin{enumerate}
     \item How effective are common white-box attacks (FGSM, BIM/PGD, DeepFool) against standard models, and how does effectiveness scale with perturbation budget?
@@ -29,11 +29,11 @@ We study convolutional neural networks trained on MNIST and CIFAR-10 for image c
     \item How do the three attacks compare in terms of attack success rate, perturbation magnitude, and computational cost?
 \end{enumerate}
 
-We restrict our scope to evasion attacks at test time in the image classification setting.
+I restrict the scope to evasion attacks at test time in the image classification setting.
 
 \section{Research Objectives}
 
-We observe that much of the existing work either remains theoretical or relies on adversarial ML libraries without investigating the underlying mechanics. To this end, we set the following objectives:
+I observe that much of the existing work either remains theoretical or relies on adversarial ML libraries without investigating the underlying mechanics. To this end, I set the following objectives:
 
 \begin{itemize}
     \item Implement FGSM, BIM/PGD, and DeepFool from scratch in PyTorch and evaluate them on MNIST and CIFAR-10.
@@ -47,9 +47,9 @@ We observe that much of the existing work either remains theoretical or relies o
 The contributions of this thesis are as follows:
 
 \begin{enumerate}
-    \item We provide a controlled comparison of three adversarial attacks on the same model with the same evaluation setup. This addresses the difficulty of comparing results across papers that use different configurations.
-    \item We report the accuracy--robustness trade-off from PGD adversarial training with sufficient detail for reproducibility.
-    \item We release an open-source framework containing all attack implementations, training scripts, evaluation code, and an interactive web demo.
+    \item I provide a controlled comparison of three adversarial attacks on the same model with the same evaluation setup. This addresses the difficulty of comparing results across papers that use different configurations.
+    \item I report the accuracy--robustness trade-off from PGD adversarial training with sufficient detail for reproducibility.
+    \item I release an open-source framework containing all attack implementations, training scripts, evaluation code, and an interactive web demo.
 \end{enumerate}
 
 \section{Thesis Organization}

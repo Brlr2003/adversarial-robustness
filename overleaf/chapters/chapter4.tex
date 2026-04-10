@@ -3,31 +3,31 @@
 
 \section{Introduction}
 
-This chapter describes the implementation of our experimental framework. All code is written in PyTorch. We implemented FGSM, PGD, and DeepFool from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. We used MLflow for experiment tracking throughout.
+This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, and DeepFool from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
 
 \section{System Architecture}
 
-We organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all three attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
+I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all three attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
 
-We designed the system to be modular: adding a new attack requires writing a single file that conforms to the common attack interface. No changes to the rest of the codebase are needed.
+I designed the system to be modular: adding a new attack requires writing a single file that conforms to the common attack interface. No changes to the rest of the codebase are needed.
 
 \section{Implementation Details}
 
 \subsection{Model Implementation}
 
-We used ResNet-18~\cite{he2016deep}, modified for CIFAR-10. The original architecture was designed for $224 \times 224$ ImageNet images. The first layer is a $7 \times 7$ convolution with stride 2 followed by max pooling, which reduces spatial dimensions too aggressively for $32 \times 32$ inputs --- by the time the residual blocks are reached, most spatial information is lost. We replaced this with a $3 \times 3$ convolution with stride 1 and padding 1, and removed the max pooling layer. This modification is standard for CIFAR-scale experiments.
+I used ResNet-18~\cite{he2016deep}, modified for CIFAR-10. The original architecture was designed for $224 \times 224$ ImageNet images. The first layer is a $7 \times 7$ convolution with stride 2 followed by max pooling, which reduces spatial dimensions too aggressively for $32 \times 32$ inputs --- by the time the residual blocks are reached, most spatial information is lost. I replaced this with a $3 \times 3$ convolution with stride 1 and padding 1, and removed the max pooling layer. This modification is standard for CIFAR-scale experiments.
 
-The rest of the architecture follows standard ResNet-18: four residual layers with two BasicBlocks each (two $3 \times 3$ convolutions with batch normalization and ReLU per block, plus a shortcut connection). Layers 2--4 downsample using stride-2 convolutions, with $1 \times 1$ convolutions on the shortcut when dimensions change. Channel widths are 64, 128, 256, 512. Adaptive average pooling reduces feature maps to $1 \times 1$, followed by a linear layer producing 10 logits. The model has approximately 11.17 million parameters. We used Kaiming normal initialization for convolutions and constant initialization for batch normalization parameters.
+The rest of the architecture follows standard ResNet-18: four residual layers with two BasicBlocks each (two $3 \times 3$ convolutions with batch normalization and ReLU per block, plus a shortcut connection). Layers 2--4 downsample using stride-2 convolutions, with $1 \times 1$ convolutions on the shortcut when dimensions change. Channel widths are 64, 128, 256, 512. Adaptive average pooling reduces feature maps to $1 \times 1$, followed by a linear layer producing 10 logits. The model has approximately 11.17 million parameters. I used Kaiming normal initialization for convolutions and constant initialization for batch normalization parameters.
 
-We note that we deliberately did not normalize the inputs (no mean subtraction or standard deviation scaling). The reason is that adversarial perturbation budgets are defined in pixel space: $\epsilon = 8/255$ means 8 intensity levels out of 255. If the inputs are normalized, this interpretation no longer holds, and the $\epsilon$ budget would need to be rescaled accordingly. Keeping inputs in $[0, 1]$ is consistent with the adversarial robustness literature, including Madry et al.~\cite{madry2018towards}.
+I deliberately did not normalize the inputs (no mean subtraction or standard deviation scaling). The reason is that adversarial perturbation budgets are defined in pixel space: $\epsilon = 8/255$ means 8 intensity levels out of 255. If the inputs are normalized, this interpretation no longer holds, and the $\epsilon$ budget would need to be rescaled accordingly. Keeping inputs in $[0, 1]$ is consistent with the adversarial robustness literature, including Madry et al.~\cite{madry2018towards}.
 
 \subsection{Data Loading and Preprocessing}
 
-We loaded CIFAR-10 through torchvision. Training augmentation consisted of random crop with 4-pixel padding and random horizontal flip, followed by conversion to tensor. The test set used only tensor conversion. We used a batch size of 128, four DataLoader workers, and pinned memory for GPU transfers.
+I loaded CIFAR-10 through torchvision. Training augmentation consisted of random crop with 4-pixel padding and random horizontal flip, followed by conversion to tensor. The test set used only tensor conversion. I used a batch size of 128, four DataLoader workers, and pinned memory for GPU transfers.
 
 \subsection{FGSM Attack Implementation}
 
-Our FGSM implementation follows Goodfellow et al.~\cite{goodfellow2015explaining}. The procedure is given in Algorithm~\ref{alg:fgsm}.
+My FGSM implementation follows Goodfellow et al.~\cite{goodfellow2015explaining}. The procedure is given in Algorithm~\ref{alg:fgsm}.
 
 \begin{algorithm}[htbp]
 \caption{Fast Gradient Sign Method (FGSM)}
@@ -67,9 +67,9 @@ PGD is iterated FGSM with projection and random initialization. The procedure is
 \end{algorithmic}
 \end{algorithm}
 
-The initialization samples uniformly from the $\epsilon$-ball around the clean input. At each step, we compute the gradient, take a step of size $\alpha$ in the sign direction, project back into the $L_\infty$ $\epsilon$-ball by clamping $x^{adv} - x$ to $[-\epsilon, \epsilon]$, and clamp pixel values to $[0, 1]$.
+The initialization samples uniformly from the $\epsilon$-ball around the clean input. At each step I compute the gradient, take a step of size $\alpha$ in the sign direction, project back into the $L_\infty$ $\epsilon$-ball by clamping $x^{adv} - x$ to $[-\epsilon, \epsilon]$, and clamp pixel values to $[0, 1]$.
 
-We note an implementation detail that caused us difficulty: the adversarial image must be detached from the computation graph (via \texttt{.detach()}) after each iteration. Without this, PyTorch retains the computation graph from every iteration, and memory usage grows until the process runs out of memory. With 20 PGD steps on ResNet-18, this occurs quickly on 16GB of RAM.
+I note an implementation detail that caused me difficulty: the adversarial image must be detached from the computation graph (via \texttt{.detach()}) after each iteration. Without this, PyTorch retains the computation graph from every iteration, and memory usage grows linearly with the number of steps. With 20 PGD steps on ResNet-18 this fills the 24 GB of unified memory well before the batch completes, at which point the process is killed.
 
 \subsection{DeepFool Implementation}
 
@@ -81,17 +81,17 @@ The algorithm processes images one at a time. For each image, at each iteration,
     d_k = \frac{|f_k(x) - f_{\hat{k}}(x)|}{\|w_k\|_2}
 \end{equation}
 
-where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The class with the smallest $d_k$ is selected, and the corresponding minimal perturbation is applied. This repeats until the prediction changes or the iteration limit is reached (50 in our experiments). We multiply the final perturbation by $1.02$ (the ``overshoot'' parameter) to ensure the input crosses the decision boundary rather than landing exactly on it.
+where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The class with the smallest $d_k$ is selected, and the corresponding minimal perturbation is applied. This repeats until the prediction changes or the iteration limit is reached (50 in my experiments). I multiply the final perturbation by $1.02$ (the ``overshoot'' parameter) to ensure the input crosses the decision boundary rather than landing exactly on it.
 
 The per-image processing makes DeepFool substantially slower than FGSM or PGD. However, it provides information that the other attacks do not: the actual distance from each input to the nearest decision boundary.
 
 \subsection{Adversarial Training Implementation}
 
-We implemented adversarial training following Madry et al.~\cite{madry2018towards}. At each training step, we generate PGD adversarial examples from the current batch and train on those examples instead of the clean inputs.
+I implemented adversarial training following Madry et al.~\cite{madry2018towards}. At each training step I generate PGD adversarial examples from the current batch and train on those examples instead of the clean inputs.
 
-We encountered a subtle issue with batch normalization during this process. When the model is in training mode during adversarial example generation, the forward passes update the batch normalization running statistics with adversarial inputs, which corrupts these statistics. The model still trains without errors but produces poor robustness. The fix is to set the model to evaluation mode (\texttt{model.eval()}) during PGD generation and switch back to training mode (\texttt{model.train()}) for the weight update. This detail is rarely mentioned in the literature but has a substantial effect on the final model.
+I encountered a subtle issue with batch normalization during this process. When the model is in training mode during adversarial example generation, the forward passes update the batch normalization running statistics with adversarial inputs, which corrupts these statistics. The model still trains without errors but produces poor robustness. The fix is to set the model to evaluation mode (\texttt{model.eval()}) during PGD generation and switch back to training mode (\texttt{model.train()}) for the weight update. This detail is rarely mentioned in the literature but has a substantial effect on the final model.
 
-We used SGD with momentum 0.9, weight decay $5 \times 10^{-4}$, initial learning rate 0.1 with cosine annealing. We selected checkpoints based on PGD robust accuracy rather than clean accuracy. All experiments were logged to MLflow.
+I used SGD with momentum 0.9, weight decay $5 \times 10^{-4}$, initial learning rate 0.1 with cosine annealing. I selected checkpoints based on PGD robust accuracy rather than clean accuracy. All experiments were logged to MLflow.
 
 \section{Development Environment}
 
@@ -99,24 +99,24 @@ We used SGD with momentum 0.9, weight decay $5 \times 10^{-4}$, initial learning
     \item \textbf{Operating System:} macOS (Apple Silicon)
     \item \textbf{Python Version:} 3.13
     \item \textbf{PyTorch Version:} 2.x with MPS (Metal Performance Shaders) backend
-    \item \textbf{Hardware:} Apple M4 Pro, 16GB unified memory
+    \item \textbf{Hardware:} Apple M4 Pro (2024), 24 GB unified memory, 1 TB SSD
     \item \textbf{Experiment Tracking:} MLflow
     \item \textbf{Deployment:} Docker, HuggingFace Spaces
 \end{itemize}
 
-We trained on the MPS backend (Apple's GPU acceleration for Apple Silicon). Standard training took approximately 55 minutes for 50 epochs. Adversarial training took approximately 4.5 hours for 50 epochs, roughly $7\times$ slower, which is expected given that each training step includes a 7-step PGD attack in addition to the standard forward and backward passes.
+I trained on the MPS backend (Apple's GPU acceleration for Apple Silicon). Standard training took approximately 55 minutes for 50 epochs. Adversarial training took approximately 4.5 hours for 50 epochs, roughly $7\times$ slower, which is expected given that each training step includes a 7-step PGD attack in addition to the standard forward and backward passes.
 
 \section{Challenges and Solutions}
 
-We encountered several implementation issues:
+I encountered several implementation issues:
 
-\textbf{DeepFool numerical stability.} DeepFool requires gradients for all 10 classes in a loop. In PyTorch, \texttt{backward()} frees the computation graph by default, requiring \texttt{retain\_graph=True} for subsequent gradient computations. We also encountered cases where gradient differences between classes were near zero, causing NaN values in the norm computation. We resolved this by adding $10^{-8}$ to all denominators.
+\textbf{DeepFool numerical stability.} DeepFool requires gradients for all 10 classes in a loop. In PyTorch, \texttt{backward()} frees the computation graph by default, requiring \texttt{retain\_graph=True} for subsequent gradient computations. I also encountered cases where gradient differences between classes were near zero, causing NaN values in the norm computation. I resolved this by adding $10^{-8}$ to all denominators.
 
 \textbf{PGD memory.} As described above, failing to call \texttt{.detach()} after each PGD iteration causes the computation graph to grow across iterations, leading to out-of-memory errors. The fix is a single line of code, but the failure mode is not immediately obvious since the program runs correctly until memory is exhausted.
 
 \textbf{Batch normalization in adversarial training.} As described above, the model must be set to evaluation mode during adversarial example generation to prevent corruption of batch normalization statistics. Without this, training completes without errors but produces a model with reduced robustness.
 
-\textbf{MPS backend.} Apple's MPS support in PyTorch is not yet fully mature. We encountered unsupported operations and occasional numerical discrepancies between MPS and CPU. We verified results on CPU when discrepancies arose.
+\textbf{MPS backend.} Apple's MPS support in PyTorch is not yet fully mature. I encountered unsupported operations and occasional numerical discrepancies between MPS and CPU. I verified results on CPU when discrepancies arose.
 
 \section{Code Organization}
 
@@ -156,7 +156,7 @@ Training and evaluation are run through \texttt{scripts/train.py} and \texttt{sc
 
 \section{Deployment}
 
-We built a Streamlit web application to provide an interactive demonstration of the attacks. The user selects a CIFAR-10 image or uploads their own, chooses an attack and $\epsilon$ value, and the application displays the original image, the perturbation (amplified for visibility), the adversarial image, and the confidence scores from both the standard and adversarially trained models. We containerized the application with Docker and deployed it on HuggingFace Spaces.
+I built a Streamlit web application to provide an interactive demonstration of the attacks. The user selects a CIFAR-10 image or uploads their own, chooses an attack and $\epsilon$ value, and the application displays the original image, the perturbation (amplified for visibility), the adversarial image, and the confidence scores from both the standard and adversarially trained models. I containerized the application with Docker and deployed it on HuggingFace Spaces.
 
 \section{Summary}
 
