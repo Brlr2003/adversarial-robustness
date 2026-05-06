@@ -7,7 +7,7 @@ An end-to-end ML pipeline that trains, attacks, defends, and deploys deep neural
 ## 🎯 What This Project Demonstrates
 
 - **Model Training**: Train ResNet-18 on CIFAR-10 from scratch using PyTorch
-- **Adversarial Attacks**: Implement FGSM, PGD, and DeepFool attacks
+- **Adversarial Attacks**: Implement FGSM, PGD, DeepFool, HopSkipJump (decision-based black-box), and One Pixel ($L_0$) attacks
 - **Adversarial Training**: Train a robust model using PGD-based adversarial training
 - **Model Evaluation**: Compare accuracy, robustness, and confidence under attack
 - **Experiment Tracking**: Log all experiments with MLflow
@@ -26,7 +26,9 @@ adversarial-robustness-demo/
 │   │   ├── __init__.py
 │   │   ├── fgsm.py      # Fast Gradient Sign Method
 │   │   ├── pgd.py       # Projected Gradient Descent
-│   │   └── deepfool.py  # DeepFool attack
+│   │   ├── deepfool.py  # DeepFool attack
+│   │   ├── hopskipjump.py  # HopSkipJump (decision-based black-box)
+│   │   └── one_pixel.py    # One Pixel attack (L_0, differential evolution)
 │   ├── training/        # Training loops
 │   │   ├── __init__.py
 │   │   ├── standard.py  # Standard training
@@ -45,8 +47,9 @@ adversarial-robustness-demo/
 ├── configs/
 │   └── config.yaml      # Hyperparameters
 ├── scripts/
-│   ├── train.py         # Training entry point
-│   └── evaluate.py      # Evaluation entry point
+│   ├── train.py             # Training entry point
+│   ├── evaluate.py          # White-box evaluation entry point
+│   └── evaluate_blackbox.py # Black-box (HSJ, One Pixel) evaluation
 ├── tests/
 │   └── test_attacks.py  # Unit tests
 ├── .github/

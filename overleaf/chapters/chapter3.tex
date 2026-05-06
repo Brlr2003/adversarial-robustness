@@ -12,9 +12,11 @@ I structured the work into four phases:
 \begin{enumerate}
     \item \textbf{Model Training:} Train baseline CNNs on the benchmark datasets and establish clean accuracy.
 
-    \item \textbf{Attack Implementation:} Implement FGSM, BIM/PGD, and DeepFool from scratch and evaluate them against the baselines.
+    \item \textbf{White-Box Attack Implementation:} Implement FGSM, BIM/PGD, and DeepFool from scratch and evaluate them against the baselines.
 
     \item \textbf{Defense Application:} Apply PGD-based adversarial training and measure the resulting robustness.
+
+    \item \textbf{Black-Box Attack Implementation:} Implement HopSkipJump and One Pixel from scratch to test whether the white-box conclusions hold under weaker attacker assumptions.
 
     \item \textbf{Comparative Analysis:} Compare all attacks and models under identical evaluation conditions.
 \end{enumerate}
@@ -99,6 +101,14 @@ I initially planned to include the C\&W attack~\cite{carlini2017towards}:
 
 where $f$ is designed so that $f(x') \leq 0$ implies misclassification. However, the computational cost proved prohibitive on the hardware available to me, and I was unable to run it within a reasonable time frame. I discuss this in more detail as a short-term extension in Chapter~\ref{ch:conclusion}.
 
+\subsection{HopSkipJump}
+
+HopSkipJump~\cite{chen2020hopskipjump} relaxes the white-box assumption used by FGSM, PGD, and DeepFool. The attacker sees only the predicted label, not gradients or logits. The procedure alternates between (i) binary-searching along the segment between the clean image and an adversarial point to land exactly on the decision boundary, and (ii) estimating the gradient direction at that boundary point via Monte Carlo sampling: query the model on $N$ random perturbations and form a sign-weighted average of the displacement vectors. A geometric step in the estimated direction is then projected back to the boundary. The attack tracks only one budget --- total queries --- and converges to small $L_2$ perturbations within a few thousand queries per image. The full algorithm is described in Chapter~\ref{ch:implementation}.
+
+\subsection{One Pixel Attack}
+
+The One Pixel Attack~\cite{su2019onepixel} operates under an $L_0$ rather than $L_\infty$ threat model: the attacker may modify at most $k$ pixels but each pixel can take any RGB value. The search space is non-differentiable in the pixel coordinates, so the original paper uses differential evolution. Each candidate solution encodes $k$ tuples of $(x, y, r, g, b)$; the fitness is the model's softmax probability on the true class, and DE/rand/1/bin minimizes it. The attack is a useful contrast to gradient-based attacks because its perturbations are concentrated rather than spread across the input, which probes a different kind of vulnerability. The full algorithm is described in Chapter~\ref{ch:implementation}.
+
 
 \section{Defense: Adversarial Training}
 
@@ -156,7 +166,7 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
         \textbf{Dataset} & \textbf{Model} & \textbf{Attacks} & \textbf{Defense} \\
         \midrule
         MNIST & Small CNN & FGSM, PGD, DeepFool & FGSM-AT \\
-        CIFAR-10 & ResNet-18/Custom & FGSM, PGD, DeepFool & PGD-AT \\
+        CIFAR-10 & ResNet-18/Custom & FGSM, PGD, DeepFool, HopSkipJump, One Pixel & PGD-AT \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -173,5 +183,5 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
 
 \section{Summary}
 
-This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, three attacks implemented from scratch, PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
+This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, five attacks implemented from scratch (three white-box, two black-box), PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
 

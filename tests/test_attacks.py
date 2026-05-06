@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
+from src.attacks.hopskipjump import hopskipjump_attack
+from src.attacks.one_pixel import one_pixel_attack
 from src.attacks.pgd import pgd_attack
 from src.models.resnet import resnet18_cifar10
 
@@ -101,6 +103,69 @@ class TestDeepFool:
         images, _ = sample_batch
         _, norms = deepfool_attack(model, images, max_iterations=5)
         assert (norms >= 0).all()
+
+
+class TestHopSkipJump:
+    def test_output_shape(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, info = hopskipjump_attack(
+            model, images, labels,
+            max_queries=80, num_iterations=2,
+            initial_num_evals=10, max_num_evals=20,
+        )
+        assert adv.shape == images.shape
+        assert info["queries"].shape == (images.shape[0],)
+        assert info["success"].shape == (images.shape[0],)
+
+    def test_output_range(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, _ = hopskipjump_attack(
+            model, images, labels,
+            max_queries=80, num_iterations=2,
+            initial_num_evals=10, max_num_evals=20,
+        )
+        assert adv.min() >= 0.0
+        assert adv.max() <= 1.0
+
+    def test_query_budget_respected(self, model, sample_batch):
+        images, labels = sample_batch
+        budget = 100
+        _, info = hopskipjump_attack(
+            model, images, labels,
+            max_queries=budget, num_iterations=3,
+            initial_num_evals=10, max_num_evals=20,
+        )
+        assert (info["queries"] <= budget + 50).all()
+
+
+class TestOnePixel:
+    def test_output_shape(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, info = one_pixel_attack(
+            model, images, labels, k=1, pop_size=10, max_iter=2,
+        )
+        assert adv.shape == images.shape
+        assert info["success"].shape == (images.shape[0],)
+
+    def test_output_range(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, _ = one_pixel_attack(
+            model, images, labels, k=1, pop_size=10, max_iter=2,
+        )
+        assert adv.min() >= 0.0
+        assert adv.max() <= 1.0
+
+    def test_l0_perturbation_bound(self, model, sample_batch):
+        """At most k pixels should differ from the original."""
+        images, labels = sample_batch
+        k = 3
+        adv, _ = one_pixel_attack(
+            model, images, labels, k=k, pop_size=10, max_iter=2,
+        )
+        diff = (adv - images).abs().sum(dim=1)  # collapse channels
+        for i in range(images.shape[0]):
+            n_changed = (diff[i] > 1e-6).sum().item()
+            assert n_changed <= k
 
 
 class TestResNet:

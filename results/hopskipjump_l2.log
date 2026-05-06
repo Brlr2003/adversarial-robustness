@@ -1,0 +1,39 @@
+/Users/omar/Documents/Projects/adversarial-robustness/venv/lib/python3.13/site-packages/torchvision/datasets/cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+Device: mps
+Attack: hopskipjump
+Num images: 150
+
+=== Model: standard (checkpoints/standard_best.pt) ===
+  [10/150] correct-only=10 avg-queries=2500 success-rate=100.0%  (17.1s)
+  [20/150] correct-only=20 avg-queries=2500 success-rate=100.0%  (34.1s)
+  [30/150] correct-only=30 avg-queries=2500 success-rate=100.0%  (52.4s)
+  [40/150] correct-only=40 avg-queries=2500 success-rate=100.0%  (70.9s)
+  [50/150] correct-only=50 avg-queries=2500 success-rate=100.0%  (88.9s)
+  [60/150] correct-only=60 avg-queries=2500 success-rate=100.0%  (105.8s)
+  [70/150] correct-only=68 avg-queries=2500 success-rate=100.0%  (119.1s)
+  [80/150] correct-only=77 avg-queries=2500 success-rate=100.0%  (131.5s)
+  [90/150] correct-only=87 avg-queries=2500 success-rate=100.0%  (140.7s)
+  [100/150] correct-only=96 avg-queries=2500 success-rate=100.0%  (148.7s)
+  [110/150] correct-only=106 avg-queries=2500 success-rate=100.0%  (157.3s)
+  [120/150] correct-only=116 avg-queries=2500 success-rate=100.0%  (166.1s)
+  [130/150] correct-only=126 avg-queries=2500 success-rate=100.0%  (174.8s)
+  [140/150] correct-only=134 avg-queries=2500 success-rate=100.0%  (181.7s)
+  [150/150] correct-only=144 avg-queries=2500 success-rate=100.0%  (190.4s)
+
+=== Model: robust (checkpoints/robust_best.pt) ===
+  [10/150] correct-only=10 avg-queries=2270 success-rate=90.0%  (9.0s)
+  [20/150] correct-only=20 avg-queries=2385 success-rate=95.0%  (18.3s)
+  [30/150] correct-only=29 avg-queries=2421 success-rate=96.6%  (26.7s)
+  [40/150] correct-only=39 avg-queries=2441 success-rate=97.4%  (35.9s)
+  [50/150] correct-only=48 avg-queries=2356 success-rate=93.8%  (43.2s)
+  [60/150] correct-only=57 avg-queries=2339 success-rate=93.0%  (51.0s)
+  [70/150] correct-only=65 avg-queries=2323 success-rate=92.3%  (57.6s)
+  [80/150] correct-only=71 avg-queries=2241 success-rate=88.7%  (61.9s)
+  [90/150] correct-only=79 avg-queries=2238 success-rate=88.6%  (69.5s)
+  [100/150] correct-only=88 avg-queries=2265 success-rate=89.8%  (77.8s)
+  [120/150] correct-only=106 avg-queries=2261 success-rate=89.6%  (93.4s)
+  [140/150] correct-only=120 avg-queries=2232 success-rate=88.3%  (104.8s)
+  [150/150] correct-only=128 avg-queries=2195 success-rate=86.7%  (110.7s)
+
+Results saved to: results/hopskipjump_l2.json

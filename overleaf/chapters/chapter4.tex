@@ -3,11 +3,11 @@
 
 \section{Introduction}
 
-This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, and DeepFool from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
+This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, DeepFool, HopSkipJump, and One Pixel from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
 
 \section{System Architecture}
 
-I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all three attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
+I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all five attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
 
 I designed the system to be modular: adding a new attack requires writing a single file that conforms to the common attack interface. No changes to the rest of the codebase are needed.
 
@@ -85,6 +85,30 @@ where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The class with the smal
 
 The per-image processing makes DeepFool substantially slower than FGSM or PGD. However, it provides information that the other attacks do not: the actual distance from each input to the nearest decision boundary.
 
+\subsection{HopSkipJump Implementation}
+
+HopSkipJump~\cite{chen2020hopskipjump} is a decision-based black-box attack: every query returns only the predicted label, never logits or gradients. The implementation has three nested operations.
+
+\textit{Initialisation.} For each clean image, draw uniform random images from $[0, 1]^{C \times H \times W}$ and accept the first one that the model classifies differently from the true label. This produces a (typically far-from-clean) starting adversarial point.
+
+\textit{Boundary projection.} Given a clean image $x$ and an adversarial point $x'$, binary search along the segment between them in the chosen norm ($L_2$ for the experiments in this thesis) until the perturbation magnitude can no longer be reduced without losing the misclassification. Each binary-search step is a single label query.
+
+\textit{Gradient direction estimation.} At a boundary point, sample $N$ random directions $u_1, \dots, u_N$, query the model on $x_{\text{bd}} + \delta u_i$, and form the estimate
+\begin{equation}
+    \hat{v} = \frac{1}{N} \sum_{i=1}^{N} \phi_i \, u_i, \quad \phi_i = \begin{cases} +1 & \text{if } x_{\text{bd}} + \delta u_i \text{ is adversarial} \\ -1 & \text{otherwise} \end{cases}
+\end{equation}
+followed by normalisation. This is a Monte Carlo estimate of the boundary's normal direction. $N$ grows like $\sqrt{t}$ across iterations, capped at 1{,}000 in my experiments.
+
+The outer loop alternates: estimate $\hat{v}$, take a geometric step in that direction, project back to the boundary. The step size starts at $d / \sqrt{t+1}$ where $d$ is the current distance to clean, and halves on each failure to land in the adversarial region. The attack terminates when the query budget is exhausted. The full implementation lives in \texttt{src/attacks/hopskipjump.py} and is approximately 250 lines.
+
+\subsection{One Pixel Implementation}
+
+The One Pixel Attack~\cite{su2019onepixel} searches for $k$ pixels and their RGB values such that perturbing only those pixels causes a misclassification. The objective is non-differentiable in the pixel coordinates --- those are integer indices --- so I use differential evolution rather than gradient descent.
+
+Each candidate solution is a flat vector of length $5k$, encoding $k$ tuples of $(x, y, r, g, b)$. The fitness is the model's softmax probability on the true class (untargeted attack); lower is better. I implemented standard DE/rand/1/bin: at each generation, for each member of the population, I form a trial by combining three randomly chosen members with mutation factor $F = 0.5$ and crossover rate $CR = 0.7$, evaluate the trial via a single batched forward pass, and replace the member if the trial has lower fitness. The attack terminates when the best candidate fools the model or the iteration budget is exhausted.
+
+I used population size 400 and 50 generations for the experiments. The attack requires no gradients, but it does need score-level access (probabilities) to drive the DE fitness, so the threat model is slightly stronger than HopSkipJump's strict label-only assumption. The implementation lives in \texttt{src/attacks/one\_pixel.py}.
+
 \subsection{Adversarial Training Implementation}
 
 I implemented adversarial training following Madry et al.~\cite{madry2018towards}. At each training step I generate PGD adversarial examples from the current batch and train on those examples instead of the clean inputs.
@@ -118,6 +142,10 @@ I encountered several implementation issues:
 
 \textbf{MPS backend.} Apple's MPS support in PyTorch is not yet fully mature. I encountered unsupported operations and occasional numerical discrepancies between MPS and CPU. I verified results on CPU when discrepancies arose.
 
+\textbf{Per-image cost of black-box attacks.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than the gradient-based attacks. Each HopSkipJump attack uses thousands of forward passes, each One Pixel attack uses tens of thousands of forward passes through differential evolution. Running these on the full CIFAR-10 test set was not practical on my hardware. I therefore evaluated them on subsets (\HSJN{} and \OPN{} images respectively, sampled from the test set with a fixed seed) rather than the full 10,000 images. The subset is large enough to give meaningful estimates of the success rates and median perturbation magnitudes; the cost of going larger does not change the qualitative picture.
+
+\textbf{One Pixel CPU--GPU transfer.} The One Pixel attack runs differential evolution on CPU (the search is over integer pixel coordinates and continuous RGB values, which numpy handles more naturally than torch on MPS) but each fitness evaluation is a forward pass on MPS. Naively transferring single images at a time was the bottleneck. I batch the entire DE population into a single forward pass per generation, which made the attack roughly an order of magnitude faster.
+
 \section{Code Organization}
 
 The codebase is structured as follows:
@@ -131,6 +159,8 @@ adversarial-robustness/
 |   |   +-- fgsm.py            # FGSM attack
 |   |   +-- pgd.py             # PGD attack
 |   |   +-- deepfool.py        # DeepFool attack
+|   |   +-- hopskipjump.py     # HopSkipJump (decision-based black-box)
+|   |   +-- one_pixel.py       # One Pixel attack (L_0, DE-based)
 |   +-- training/
 |   |   +-- standard.py        # Standard training loop
 |   |   +-- adversarial.py     # PGD adversarial training
@@ -143,7 +173,8 @@ adversarial-robustness/
 |   +-- app.py                 # Streamlit demo interface
 +-- scripts/
 |   +-- train.py               # Training entry point
-|   +-- evaluate.py            # Evaluation entry point
+|   +-- evaluate.py            # White-box evaluation entry point
+|   +-- evaluate_blackbox.py   # Black-box (HSJ, One Pixel) evaluation
 +-- configs/
 |   +-- config.yaml            # Hyperparameters
 +-- checkpoints/               # Saved model weights
@@ -160,5 +191,5 @@ I built a Streamlit web application to provide an interactive demonstration of t
 
 \section{Summary}
 
-This chapter described the implementation of three adversarial attacks from scratch, two training pipelines, and an interactive web demo. The main engineering challenges were memory management in PGD, numerical stability in DeepFool, and the batch normalization issue during adversarial training. The next chapter presents the experimental results.
+This chapter described the implementation of five adversarial attacks from scratch, two training pipelines, and an interactive web demo. The main engineering challenges were memory management in PGD, numerical stability in DeepFool, the batch normalization issue during adversarial training, and the per-image cost of the black-box attacks (HopSkipJump and One Pixel) which required moving to subset-based evaluation. The next chapter presents the experimental results.
 

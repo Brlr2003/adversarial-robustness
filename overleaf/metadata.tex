@@ -35,21 +35,21 @@
 \abstract{
 Deep learning models achieve strong performance on image classification and related tasks, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This vulnerability raises practical concerns for applications in autonomous driving, biometrics, and security.
 
-In this thesis I implement three white-box adversarial attacks --- FGSM, PGD, and DeepFool --- from scratch and evaluate them on a ResNet-18 trained on CIFAR-10. The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$. I then apply PGD-based adversarial training, which produces a model that retains 45.1\% accuracy under the same attack at a cost of 10.2 percentage points of clean accuracy. DeepFool analysis reveals that the standard model's decision boundaries lie only 0.248 $L_2$ from the data on average; adversarial training increases this distance to 0.892. The results demonstrate both the severity of adversarial vulnerability and the effectiveness of adversarial training as a defense.
+In this thesis I implement five adversarial attacks from scratch --- FGSM, PGD, DeepFool, HopSkipJump, and One Pixel --- and evaluate them on a ResNet-18 trained on CIFAR-10. The five attacks cover both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$). The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$, and is also broken in the black-box setting: HopSkipJump drives the median $L_2$ perturbation to 0.36 within a 2{,}500-query budget. I then apply PGD-based adversarial training, which produces a model that retains 45.1\% accuracy under PGD at the cost of 10.2 percentage points of clean accuracy, and that approximately $5.8\times$ the $L_2$ perturbation under HopSkipJump. The robustness gain transfers partially to the One Pixel attack as well, even though PGD adversarial training is not designed against an $L_0$ adversary. The results demonstrate both the severity of adversarial vulnerability across multiple threat models and the effectiveness of adversarial training as a defense.
 }
 
 % Keywords (English)
-\keywordsenglish{Adversarial Examples, Deep Neural Networks, FGSM, PGD, DeepFool, Adversarial Training, Robustness}
+\keywordsenglish{Adversarial Examples, Deep Neural Networks, FGSM, PGD, DeepFool, HopSkipJump, One Pixel Attack, Black-Box Attacks, Adversarial Training, Robustness}
 
 % Abstrakt (Albanian)
 \abstrakt{
 Modelet e mësimit të thellë (Deep Learning) arrijnë performancë të jashtëzakonshme në detyra si klasifikimi i imazheve, megjithatë ato janë të njohura për cenueshmërinë ndaj shembujve kundërshtarë (Adversarial Examples), hyrje që janë ndryshuar me ndryshime të vogla, shpesh të padukshme, të cilat shkaktojnë klasifikim të gabuar me besueshmëri të lartë. Kjo cenueshmëri ngre shqetësime serioze për sigurinë e sistemeve të përdorura në drejtimin autonom, biometrikë dhe sigurinë kibernetike.
 
-Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar (Convolutional Neural Network) ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe tre sulme white-box (FGSM, PGD, DeepFool) implementohen dhe krahasohen. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa. Trajnimi kundërshtar (Adversarial Training) i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën të njëjtin sulm, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
+Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar (Convolutional Neural Network) ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe pesë sulme implementohen dhe krahasohen: tre sulme white-box (FGSM, PGD, DeepFool) dhe dy sulme black-box (HopSkipJump, One Pixel), duke mbuluar modelet kërcënuese $L_\infty$, $L_2$ dhe $L_0$. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa, dhe gjithashtu çahet në sulmet black-box. Trajnimi kundërshtar (Adversarial Training) i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën PGD dhe rrit me afërsisht $5.8\times$ koston në $L_2$ të sulmit HopSkipJump, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare në modele të ndryshme kërcënuese dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
 }
 
 % Keywords (Albanian)
-\keywords{Shembuj Kundërshtarë, Rrjete Neurale të Thella, FGSM, PGD, DeepFool, Trajnim Kundërshtar, Qëndrueshmëri}
+\keywords{Shembuj Kundërshtarë, Rrjete Neurale të Thella, FGSM, PGD, DeepFool, HopSkipJump, Sulmi One Pixel, Sulme Black-Box, Trajnim Kundërshtar, Qëndrueshmëri}
 
 % Acknowledgments
 \acknowledgments{
@@ -70,9 +70,11 @@ AE & Adversarial Example \\
 BIM & Basic Iterative Method \\
 C\&W & Carlini-Wagner Attack \\
 CNN & Convolutional Neural Network \\
+DE & Differential Evolution \\
 DNN & Deep Neural Network \\
 FGSM & Fast Gradient Sign Method \\
 GPU & Graphics Processing Unit \\
+HSJ & HopSkipJump (Attack) \\
 MPS & Metal Performance Shaders \\
 PGD & Projected Gradient Descent \\
 PGD-AT & PGD-based Adversarial Training \\

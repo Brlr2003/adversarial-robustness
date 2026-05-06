@@ -21,12 +21,13 @@ I chose this topic because I wanted to move beyond theoretical discussion and ac
 
 \section{Problem Statement}
 
-I study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses three questions:
+I study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses four questions:
 
 \begin{enumerate}
     \item How effective are common white-box attacks (FGSM, BIM/PGD, DeepFool) against standard models, and how does effectiveness scale with perturbation budget?
-    \item Does PGD-based adversarial training yield meaningful robustness, and what is the cost in clean accuracy?
-    \item How do the three attacks compare in terms of attack success rate, perturbation magnitude, and computational cost?
+    \item Does the picture change in the black-box setting, where the attacker has no gradient access? I use HopSkipJump (decision-based) and One Pixel ($L_0$) to test this.
+    \item Does PGD-based adversarial training yield meaningful robustness, and what is the cost in clean accuracy? Does the gain transfer across threat models, including ones the training procedure was not designed against?
+    \item How do the five attacks compare in terms of attack success rate, perturbation magnitude, and computational cost?
 \end{enumerate}
 
 I restrict the scope to evasion attacks at test time in the image classification setting.
@@ -36,10 +37,10 @@ I restrict the scope to evasion attacks at test time in the image classification
 I observe that much of the existing work either remains theoretical or relies on adversarial ML libraries without investigating the underlying mechanics. To this end, I set the following objectives:
 
 \begin{itemize}
-    \item Implement FGSM, BIM/PGD, and DeepFool from scratch in PyTorch and evaluate them on MNIST and CIFAR-10.
-    \item Evaluate at multiple perturbation budgets to characterize how accuracy degrades as $\epsilon$ increases.
-    \item Apply PGD-based adversarial training and measure the resulting trade-off between robustness and clean accuracy.
-    \item Compare all three attacks under identical conditions --- same model, same data, same evaluation protocol.
+    \item Implement FGSM, BIM/PGD, DeepFool, HopSkipJump, and One Pixel from scratch in PyTorch and evaluate them on MNIST and CIFAR-10.
+    \item Evaluate at multiple perturbation budgets to characterize how accuracy degrades as $\epsilon$ increases, and at multiple query budgets for the decision-based attack.
+    \item Apply PGD-based adversarial training and measure the resulting trade-off between robustness and clean accuracy across white-box and black-box threat models.
+    \item Compare all five attacks under identical conditions --- same model, same data, same evaluation protocol --- spanning $L_\infty$, $L_2$, and $L_0$ threat models.
 \end{itemize}
 
 \section{Contributions}
