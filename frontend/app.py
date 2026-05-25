@@ -22,8 +22,11 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torchvision import datasets
 
+from src.attacks.cw import cw_l2_attack
 from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
+from src.attacks.hopskipjump import hopskipjump_attack
+from src.attacks.one_pixel import one_pixel_attack
 from src.attacks.pgd import pgd_attack
 from src.models.resnet import resnet18_cifar10
 from src.utils.data import CIFAR10_CLASSES
@@ -146,7 +149,10 @@ def main():
         st.divider()
 
         st.subheader("Attack Parameters")
-        attack_type = st.selectbox("Attack Method", ["FGSM", "PGD", "DeepFool"])
+        attack_type = st.selectbox(
+            "Attack Method",
+            ["FGSM", "PGD", "DeepFool", "Carlini-Wagner", "HopSkipJump", "One Pixel"],
+        )
 
         if attack_type in ("FGSM", "PGD"):
             epsilon = st.slider(
@@ -170,6 +176,22 @@ def main():
                 step=0.001,
                 format="%.3f",
             )
+
+        if attack_type == "Carlini-Wagner":
+            cw_steps = st.slider("Binary-search steps", 1, 9, 4)
+            cw_iters = st.slider("Adam iterations", 20, 300, 100, step=20)
+            st.caption("Minimum-$L_2$ white-box attack. ~2–4 s per image.")
+
+        if attack_type == "HopSkipJump":
+            hsj_budget = st.slider("Query budget", 200, 3000, 1000, step=100)
+            hsj_iters = st.slider("Iterations", 5, 30, 15)
+            st.caption("Decision-based black-box (label-only). ~5–10 s per image.")
+
+        if attack_type == "One Pixel":
+            op_k = st.slider("Pixels (k)", 1, 5, 1)
+            op_pop = st.slider("DE population", 50, 400, 150, step=50)
+            op_iters = st.slider("DE generations", 10, 75, 20, step=5)
+            st.caption("$L_0$ attack via differential evolution. Slow on free CPU (~15–25 s).")
 
         st.divider()
         st.caption(f"Device: `{DEVICE}`")
@@ -231,6 +253,24 @@ def main():
                 )
             elif attack_type == "DeepFool":
                 adv_image, norms = deepfool_attack(target_model, image_tensor, device=DEVICE)
+            elif attack_type == "Carlini-Wagner":
+                adv_image, _ = cw_l2_attack(
+                    target_model, image_tensor, pred_label,
+                    binary_search_steps=cw_steps, max_iterations=cw_iters,
+                    device=DEVICE,
+                )
+            elif attack_type == "HopSkipJump":
+                adv_image, _ = hopskipjump_attack(
+                    target_model, image_tensor, pred_label,
+                    max_queries=hsj_budget, num_iterations=hsj_iters,
+                    device=DEVICE,
+                )
+            elif attack_type == "One Pixel":
+                adv_image, _ = one_pixel_attack(
+                    target_model, image_tensor, pred_label,
+                    k=op_k, pop_size=op_pop, max_iter=op_iters,
+                    device=DEVICE,
+                )
 
         # Compute perturbation
         perturbation = adv_image - image_tensor.to(DEVICE)
@@ -313,10 +353,15 @@ def main():
         Adversarial attacks add small, carefully crafted perturbations to images that are
         imperceptible to humans but cause neural networks to make confident wrong predictions.
 
-        **Attacks implemented:**
-        - **FGSM** (Fast Gradient Sign Method): Single-step attack. Fast but less powerful.
-        - **PGD** (Projected Gradient Descent): Multi-step iterative attack. The strongest first-order attack.
-        - **DeepFool**: Finds the minimum perturbation needed to fool the model.
+        **Attacks implemented (all from scratch):**
+        - **FGSM** (Fast Gradient Sign Method): single-step $L_\infty$ attack. Fast but less powerful.
+        - **PGD** (Projected Gradient Descent): multi-step iterative $L_\infty$ attack. The strongest first-order attack.
+        - **DeepFool**: finds a small $L_2$ perturbation by linearizing the boundary.
+        - **Carlini-Wagner**: optimization-based $L_2$ attack; the strongest minimum-perturbation attack.
+        - **HopSkipJump**: decision-based black-box attack — uses only the predicted label, no gradients.
+        - **One Pixel**: $L_0$ attack via differential evolution — changes only a handful of pixels.
+
+        These span white-box, decision-based black-box, and the $L_\infty$/$L_2$/$L_0$ threat models.
 
         **Defense:**
         The robust model is trained using **PGD Adversarial Training** (Madry et al., 2018),
@@ -327,6 +372,9 @@ def main():
         - Goodfellow et al., *Explaining and Harnessing Adversarial Examples* (2014)
         - Madry et al., *Towards Deep Learning Models Resistant to Adversarial Attacks* (2018)
         - Moosavi-Dezfooli et al., *DeepFool* (2016)
+        - Carlini & Wagner, *Towards Evaluating the Robustness of Neural Networks* (2017)
+        - Chen, Jordan & Wainwright, *HopSkipJumpAttack* (2020)
+        - Su, Vargas & Sakurai, *One Pixel Attack* (2019)
         """)
 
 
