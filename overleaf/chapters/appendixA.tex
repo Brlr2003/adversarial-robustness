@@ -272,6 +272,102 @@ def deepfool_attack(model, images, max_iterations=50,
     return adv_images.detach(), perturbation_norms.detach()
 \end{lstlisting}
 
+\section{Carlini--Wagner Attack Implementation}
+
+\begin{lstlisting}[language=Python, caption={Carlini-Wagner L2 Attack Implementation}, label={lst:cw}]
+import torch
+import torch.nn as nn
+
+
+def _to_tanh_space(x):
+    x = (x * 2 - 1).clamp(-1 + 1e-6, 1 - 1e-6)
+    return 0.5 * torch.log((1 + x) / (1 - x))  # arctanh
+
+
+def _from_tanh_space(w):
+    return 0.5 * (torch.tanh(w) + 1)
+
+
+def cw_l2_attack(model, images, labels, confidence=0.0,
+                 binary_search_steps=8, max_iterations=200,
+                 learning_rate=0.01, initial_const=1e-2,
+                 device="cpu"):
+    """
+    Carlini & Wagner L2 attack: searches for the minimal
+    L2 perturbation that flips the prediction, using a
+    tanh change of variables, a logit margin loss, and
+    binary search over the trade-off constant c.
+    """
+    model.eval()
+    images = images.clone().detach().to(device)
+    labels = labels.clone().detach().to(device)
+    B = images.shape[0]
+    with torch.no_grad():
+        num_classes = model(images[:1]).shape[1]
+
+    one_hot = torch.zeros(B, num_classes, device=device)
+    one_hot[torch.arange(B, device=device), labels] = 1.0
+
+    lower = torch.zeros(B, device=device)
+    const = torch.full((B,), initial_const, device=device)
+    upper = torch.full((B,), 1e10, device=device)
+
+    best_l2 = torch.full((B,), float("inf"), device=device)
+    best_adv = images.clone()
+    best_ok = torch.zeros(B, dtype=torch.bool, device=device)
+
+    w_init = _to_tanh_space(images)
+
+    for _ in range(binary_search_steps):
+        w = w_init.clone().detach().requires_grad_(True)
+        opt = torch.optim.Adam([w], lr=learning_rate)
+        prev = float("inf")
+        step_ok = torch.zeros(B, dtype=torch.bool,
+                              device=device)
+
+        for it in range(max_iterations):
+            adv = _from_tanh_space(w)
+            l2_sq = (adv - images).flatten(1).pow(2).sum(1)
+            logits = model(adv)
+            real = (one_hot * logits).sum(1)
+            other = ((1 - one_hot) * logits
+                     - one_hot * 1e4).max(1)[0]
+            f = torch.clamp(real - other, min=-confidence)
+            loss = (l2_sq + const * f).sum()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+            with torch.no_grad():
+                pred = logits.argmax(1)
+                is_adv = pred != labels
+                l2 = l2_sq.sqrt()
+                step_ok |= is_adv
+                better = is_adv & (l2 < best_l2)
+                best_l2 = torch.where(better, l2, best_l2)
+                best_adv = torch.where(
+                    better.view(-1, 1, 1, 1),
+                    adv.detach(), best_adv)
+                best_ok |= is_adv
+
+            if it % max(1, max_iterations // 10) == 0:
+                if loss.item() > prev * 0.9999:
+                    break
+                prev = loss.item()
+
+        # Binary search on c.
+        with torch.no_grad():
+            upper = torch.where(step_ok,
+                torch.minimum(upper, const), upper)
+            lower = torch.where(~step_ok,
+                torch.maximum(lower, const), lower)
+            has_up = upper < 1e9
+            mid = (lower + upper) / 2
+            const = torch.where(has_up, mid, const * 10)
+
+    return best_adv.detach(), best_ok, best_l2
+\end{lstlisting}
+
 \section{Adversarial Training Implementation}
 
 \begin{lstlisting}[language=Python, caption={PGD Adversarial Training Loop}, label={lst:adv_training}]

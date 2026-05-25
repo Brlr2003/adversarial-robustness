@@ -3,7 +3,7 @@
 
 \section{Introduction}
 
-In this chapter I present the results of my experiments. I evaluate five attacks on CIFAR-10 --- three white-box attacks (FGSM, PGD, DeepFool) and two black-box attacks (HopSkipJump, One Pixel) --- report the effect of adversarial training, and compare the attacks under identical conditions. All experiments used the framework described in Chapter~\ref{ch:implementation}, with results tracked via MLflow.
+In this chapter I present the results of my experiments. I evaluate six attacks on CIFAR-10 --- four white-box attacks (FGSM, PGD, DeepFool, Carlini--Wagner) and two black-box attacks (HopSkipJump, One Pixel) --- run a transfer-based study between my two models, report the effect of adversarial training, and compare the attacks under identical conditions. All experiments used the framework described in Chapter~\ref{ch:implementation}, with results tracked via MLflow.
 
 \section{Experimental Setup}
 
@@ -48,6 +48,7 @@ Table~\ref{tab:attack_params} lists the attack configurations used during evalua
         FGSM & $\epsilon \in \{2/255, 4/255, 8/255, 16/255\}$ \\
         PGD & $\epsilon \in \{2/255, 4/255, 8/255, 16/255\}$, step size $\alpha = \epsilon/4$, iterations $T = 20$, random start \\
         DeepFool & Max iterations = 50, overshoot = 0.02, 10 classes \\
+        Carlini--Wagner & $L_2$ mode, \CWS{} binary-search steps, \CWI{} Adam iterations, learning rate 0.01, $\kappa = 0$, untargeted \\
         HopSkipJump & $L_2$ mode, query budget $= \HSJQ{}$, $\HSJI{}$ outer iterations, MC samples $\in [100, 1000]$, untargeted \\
         One Pixel & $k \in \{1, 3, 5\}$, DE population $= \OPP{}$, $\OPI{}$ generations, $F = 0.5$, $\mathrm{CR} = 0.7$, untargeted \\
         \bottomrule
@@ -58,7 +59,7 @@ For the inner PGD attack during adversarial training, I used $\epsilon = 8/255$,
 
 \subsection{Evaluation Protocol}
 
-FGSM, PGD, and DeepFool were evaluated on the full CIFAR-10 test set (10,000 images). PGD used one random restart, which is standard for evaluating adversarially trained models. HopSkipJump and One Pixel are several orders of magnitude more expensive per image than the gradient-based attacks --- thousands of forward passes per sample versus a single backward pass --- so they were evaluated on a fixed random subset of \HSJN{} (HopSkipJump) and \OPN{} (One Pixel) correctly classified images per model. Attack success rates were computed only over images that the model classified correctly on clean data.
+FGSM, PGD, and DeepFool were evaluated on the full CIFAR-10 test set (10,000 images). PGD used one random restart, which is standard for evaluating adversarially trained models. Carlini--Wagner is batched and runs on the GPU, but each attack performs several thousand forward and backward passes, so I evaluated it on a fixed random subset of \CWN{} images per model. HopSkipJump and One Pixel are several orders of magnitude more expensive per image than the gradient-based attacks --- thousands of forward passes per sample versus a single backward pass --- so they were evaluated on a fixed random subset of \HSJN{} (HopSkipJump) and \OPN{} (One Pixel) correctly classified images per model. Attack success rates were computed only over images that the model classified correctly on clean data.
 
 I also built an interactive web demo on HuggingFace Spaces (Figure~\ref{fig:demo_interface}) that allows comparison of both models under any attack and $\epsilon$ value.
 
@@ -153,10 +154,42 @@ DeepFool finds the minimum perturbation per image rather than operating within a
 
 DeepFool fools 91.1\% of correctly classified images on the standard model with an average $L_2$ perturbation of only 0.248. This indicates that the decision boundaries of the standard model are very close to the data points. For the adversarially trained model, DeepFool requires approximately $3.6\times$ larger perturbations and achieves a 62.0\% success rate. The decision boundaries have moved further from the data. See Figure~\ref{fig:attack_deepfool}.
 
+\subsection{Carlini--Wagner Attack Results}
+\label{sec:cw_results}
+
+Like DeepFool, Carlini--Wagner minimizes the $L_2$ perturbation rather than working within a fixed budget, but it solves a single optimization problem with a logit-margin loss and is the standard strong $L_2$ attack. I ran it on a random subset of \CWN{} test images per model (474 correctly classified by the standard model and 421 by the adversarially trained model), with \CWS{} binary-search steps and \CWI{} Adam iterations per step. Table~\ref{tab:cw_results} reports the results.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Carlini--Wagner $L_2$ attack on CIFAR-10. The success rate is over correctly classified images; the $L_2$ and $L_\infty$ statistics are over successfully attacked images. Subset: 474 (standard) and 421 (adv-trained) correctly classified images out of \CWN{}.}
+    \label{tab:cw_results}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Model} & \textbf{Success Rate (\%)} & \textbf{Median $L_2$} & \textbf{Mean $L_2$} & \textbf{Mean $L_\infty$} \\
+        \midrule
+        Standard & 100.0 & 0.104 & 0.117 & 0.015 \\
+        Adv-Trained & 100.0 & 0.758 & 0.815 & 0.194 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+C\&W finds an adversarial example for every correctly classified image on both models --- a 100\% success rate --- which already separates it from DeepFool (91.1\% on the standard model, 62.0\% on the robust one). On the standard model the median $L_2$ perturbation is 0.104, roughly $2.4\times$ smaller than DeepFool's 0.248: the optimization-based search pushes the perturbation closer to the true decision boundary than DeepFool's greedy linearization does. 93.7\% of standard-model attacks succeed with $L_2 \le 0.25$, and all of them with $L_2 \le 0.5$.
+
+The adversarially trained model is far more expensive to attack: the median $L_2$ rises to 0.758, about $7.3\times$ the standard model's. Only 14.0\% of attacks succeed below $L_2 = 0.25$ and 31.4\% below $L_2 = 0.5$, the range in which the standard model was already fully broken. The factor of $7.3\times$ is in line with the $5.8\times$ from HopSkipJump and the $3.6\times$ from DeepFool, and the agreement across three different $L_2$-style attacks is the point: adversarial training enlarges the margin around the data by a consistent multiple, regardless of how the perturbation is found. C\&W also reaches 100\% success on the robust model where DeepFool reached only 62.0\%, and with a slightly smaller average perturbation (0.815 versus 0.892). DeepFool's apparently larger robustness radius on that model was partly an artifact of the weaker attack giving up, not of the model being genuinely safe at that distance --- a concrete reminder that a defense should be measured against the strongest available attack.
+
+Figure~\ref{fig:cw_curve} plots the cumulative fraction of attacked images against the final $L_2$ perturbation. The two curves are widely separated: the standard-model curve saturates by $L_2 = 0.5$, while the adversarially trained model's curve does not reach 100\% until $L_2 \approx 3.7$.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/cw_curve.pdf}
+    \caption{Carlini--Wagner $L_2$ attack on CIFAR-10: cumulative fraction of successfully attacked images with a final $L_2$ perturbation at most the value on the $x$-axis. Dotted lines mark the medians (0.104 standard, 0.758 adv-trained). The adversarially trained model requires roughly $7.3\times$ the perturbation at the median.}
+    \label{fig:cw_curve}
+\end{figure}
+
 \subsection{HopSkipJump Attack Results}
 \label{sec:hsj_results}
 
-HopSkipJump differs from the previous three attacks in two ways. It is decision-based: each query returns only the predicted label, not logits or gradients. And it is iterative in a different sense: rather than walking along a gradient, it alternates between binary-searching to the decision boundary and estimating the boundary's gradient from random samples. The natural metric is therefore not robust accuracy at a fixed $\epsilon$, but the perturbation magnitude that the attacker can achieve given a fixed query budget, and the fraction of images that fall below specific $L_2$ thresholds within that budget.
+HopSkipJump differs from the previous four attacks in two ways. It is decision-based: each query returns only the predicted label, not logits or gradients. And it is iterative in a different sense: rather than walking along a gradient, it alternates between binary-searching to the decision boundary and estimating the boundary's gradient from random samples. The natural metric is therefore not robust accuracy at a fixed $\epsilon$, but the perturbation magnitude that the attacker can achieve given a fixed query budget, and the fraction of images that fall below specific $L_2$ thresholds within that budget.
 
 I ran HopSkipJump in $L_2$ mode on a random sample of \HSJN{} CIFAR-10 test images, attacking only those each model classified correctly on clean data. The query budget was \HSJQ{} per image, with \HSJI{} outer iterations. Initialisation used uniform random images filtered by rejection until misclassification, in line with the original paper. Table~\ref{tab:hsj_results} reports, for each model, the fraction of attacked images that were driven below each $L_2$ threshold within the query budget, alongside the median final $L_2$ perturbation.
 
@@ -219,6 +252,40 @@ Figure~\ref{fig:onepixel_example} shows a successful single-pixel attack on a \t
     \includegraphics[width=0.95\textwidth]{figures/onepixel_example.pdf}
     \caption{One Pixel Attack ($k = 1$) on a CIFAR-10 \texttt{ship} image. Left: clean image with the standard and adversarially trained models' confidences on the true class. Centre-left: location of the modified pixel (lower-right of the boat). Centre-right: adversarial image; the standard model's prediction flips to \texttt{automobile} with 98.9\% confidence. Right: confidence distribution over the ten classes for both models on the adversarial image. The adversarially trained model continues to identify the image as \texttt{ship} (82.3\%), while the standard model is fully confident on the wrong class.}
     \label{fig:onepixel_example}
+\end{figure}
+
+\subsection{Transferability Between Models}
+\label{sec:transfer_results}
+
+The attacks so far assume the attacker can interact with the victim model, either through gradients (FGSM, PGD, DeepFool, C\&W) or through queries (HopSkipJump, One Pixel). A weaker and very common assumption is that the attacker has no access to the victim at all, but can train or obtain a \emph{substitute} model, attack it with full white-box access, and hope the resulting examples transfer. I measure this directly between my two models. For each ordered pair (source, target) I craft FGSM, PGD, and C\&W examples against the source and report the target model's accuracy on them. To keep the baseline at 100\%, I restrict the evaluation to the 823 images (of 1{,}000 sampled) that both models classify correctly. Table~\ref{tab:transfer_results} and Figure~\ref{fig:transfer_matrix} report the results.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Transferability on CIFAR-10. Each cell is the target model's accuracy (\%) on adversarial examples crafted against the source model, over the 823 images both models classify correctly. The two same-model rows are white-box (lower is a stronger attack); the two cross-model rows are transfer (higher means the examples failed to transfer). FGSM/PGD use $\epsilon = 8/255$; C\&W is unbounded $L_2$.}
+    \label{tab:transfer_results}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Source $\rightarrow$ Target} & \textbf{FGSM} & \textbf{PGD} & \textbf{C\&W} \\
+        \midrule
+        Standard $\rightarrow$ Standard (white-box) & 37.9 & 0.0 & 0.0 \\
+        Standard $\rightarrow$ Adv-Trained (transfer) & 97.2 & 98.7 & 99.9 \\
+        Adv-Trained $\rightarrow$ Standard (transfer) & 87.6 & 81.9 & 93.1 \\
+        Adv-Trained $\rightarrow$ Adv-Trained (white-box) & 67.4 & 56.3 & 0.0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The white-box diagonal is what the earlier sections lead one to expect, with two caveats from the restricted subset. PGD and C\&W reduce the standard model to 0.0\% accuracy, and PGD leaves the adversarially trained model at 56.3\%; C\&W, being unbounded in $L_2$, eventually breaks the robust model too (0.0\%), but only at the much larger perturbation reported in Table~\ref{tab:cw_results}, which the accuracy figure alone does not show. The diagonal numbers differ slightly from the full-test-set tables earlier in this chapter --- FGSM leaves 37.9\% here versus 18.3\% on the full set --- because this subset contains only images both models classify correctly, which is a systematically easier set.
+
+The transfer rows are the interesting part. Adversarial examples crafted on the standard model barely affect the adversarially trained model: it retains 97.2\% accuracy against transferred FGSM, 98.7\% against PGD, and 99.9\% against C\&W. This is the decisive check against gradient masking. A model that appeared robust only because its gradients were obscured would still fall to examples transferred from a fully differentiable substitute; the adversarially trained model does not, so its robustness is genuine rather than an artifact of the attack failing to optimize. Transfer in the other direction is also weak: examples crafted on the robust model leave the standard model at 87.6\% (FGSM), 81.9\% (PGD), and 93.1\% (C\&W).
+
+The three attacks rank consistently by how well they transfer. FGSM transfers best --- a single large gradient step produces a coarse perturbation that is not tied to one model's exact boundary --- while C\&W transfers worst, because its whole purpose is to find the minimal perturbation for the specific source model, which overfits that model's decision surface. This is the expected ordering, and it is a useful reminder that the strongest white-box attack is not the strongest transfer attack.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/transfer_matrix.pdf}
+    \caption{Transferability between the two models for FGSM, PGD, and C\&W. Each cell is the target model's accuracy on adversarial examples crafted against the source model (green = high accuracy, i.e.\ weak attack/transfer; red = low). The diagonals are white-box; the off-diagonals are transfer. The top-right cell of each panel --- standard examples evaluated on the adversarially trained model --- stays near 100\%, showing that the robust model's resistance does not come from gradient masking.}
+    \label{fig:transfer_matrix}
 \end{figure}
 
 \subsection{Visual Examples}
@@ -301,11 +368,11 @@ Adversarial training is approximately $7\times$ slower per epoch than standard t
 
 \subsection{Success Rate and Strength Comparison}
 
-Table~\ref{tab:attack_comparison} compares the three white-box attacks on the standard model at $\epsilon = 8/255$.
+Table~\ref{tab:attack_comparison} compares the four white-box attacks on the standard model at $\epsilon = 8/255$.
 
 \begin{table}[htbp]
     \centering
-    \caption{Comparison of white-box attack methods on CIFAR-10 standard model ($\epsilon = 8/255$)}
+    \caption{Comparison of white-box attack methods on CIFAR-10 standard model ($\epsilon = 8/255$). DeepFool and Carlini--Wagner are minimum-perturbation attacks, so their robust accuracy reflects their success rate rather than a fixed budget.}
     \label{tab:attack_comparison}
     \begin{tabular}{lcccc}
         \toprule
@@ -314,13 +381,14 @@ Table~\ref{tab:attack_comparison} compares the three white-box attacks on the st
         FGSM & 18.3 & 1.351 & 0.031 & 12 \\
         PGD-20 & 1.2 & 1.351 & 0.031 & 185 \\
         DeepFool & 8.9 & 0.248 & 0.021 & 2,450 \\
+        Carlini--Wagner & 0.0 & 0.117 & 0.015 & $\sim$93,000 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-PGD is the strongest white-box attack, reducing accuracy to 1.2\% compared to 18.3\% for FGSM and 8.9\% for DeepFool. FGSM and PGD operate under the same $L_\infty$ budget, but PGD finds stronger perturbations within that budget through iteration. DeepFool uses substantially less perturbation ($L_2 = 0.248$ versus 1.351) because it seeks the minimum perturbation rather than maximum damage within a fixed budget.
+PGD is the strongest fixed-budget attack, reducing accuracy to 1.2\% compared to 18.3\% for FGSM. FGSM and PGD operate under the same $L_\infty$ budget, but PGD finds stronger perturbations within that budget through iteration. The two minimum-perturbation attacks tell a sharper story: DeepFool fools 91.1\% of images with an average $L_2$ of only 0.248, and Carlini--Wagner fools \emph{all} of them with an even smaller average $L_2$ of 0.117 --- under half of DeepFool's --- and an average $L_\infty$ of 0.015, which is well inside the $8/255 \approx 0.031$ budget. In other words, the standard model can be fooled on every test image with a perturbation that is both sparse in magnitude and smaller than the budget FGSM and PGD are allowed to use.
 
-In terms of computational cost, FGSM requires 12 ms per batch, PGD requires 185 ms (20 gradient steps), and DeepFool requires 2,450 ms due to per-image processing with per-class gradients. PGD offers the best trade-off between attack strength and computational cost for evaluation purposes. DeepFool provides complementary information (the robustness radius) but is too slow for routine evaluation.
+The attacks differ sharply in cost. FGSM requires 12 ms per batch, PGD 185 ms (20 gradient steps), DeepFool 2{,}450 ms due to per-image per-class gradients, and Carlini--Wagner roughly 93{,}000 ms because it runs hundreds of Adam iterations across several binary-search steps. PGD offers the best trade-off between attack strength and cost for routine evaluation; DeepFool and C\&W are reserved for measuring the minimum perturbation, with C\&W giving the tightest --- and therefore most honest --- estimate at the highest cost.
 
 The black-box attacks (Sections~\ref{sec:hsj_results} and~\ref{sec:onepixel_results}) cannot be slotted into the same table because their threat models differ. HopSkipJump operates under a query budget rather than a fixed perturbation budget; One Pixel operates under an $L_0$ rather than $L_\infty$ budget. The relevant comparison is qualitative. HopSkipJump under \HSJQ{} queries reaches a median $L_2$ perturbation of 0.36 on the standard model --- comparable to DeepFool's 0.248 but achieved without gradient access at the cost of approximately $\HSJQ{}$ forward passes per image. One Pixel achieves a non-trivial success rate by changing fewer than ten pixels, despite using neither gradients nor logits.
 
@@ -328,7 +396,7 @@ The black-box attacks (Sections~\ref{sec:hsj_results} and~\ref{sec:onepixel_resu
 
 FGSM and PGD both saturate the $\epsilon$ budget, perturbing every pixel by exactly $\epsilon$ in the gradient direction. DeepFool, by contrast, uses $5.4\times$ less $L_2$ perturbation on average while still fooling 91.1\% of images. This indicates that the decision boundaries of the standard model lie very close to the data --- the average distance from a data point to the nearest wrong-class boundary is 0.248 in $L_2$.
 
-After adversarial training, DeepFool requires an average of 0.892 $L_2$ perturbation, approximately $3.6\times$ larger. This confirms that adversarial training moves the decision boundaries further from the data.
+After adversarial training, DeepFool requires an average of 0.892 $L_2$ perturbation, approximately $3.6\times$ larger. Carlini--Wagner, the stronger $L_2$ attack, finds a smaller average perturbation on both models (0.117 standard, 0.815 adv-trained) at a $7.0\times$ ratio, and DeepFool, HopSkipJump, and C\&W therefore agree to within a small factor on how far adversarial training pushes the decision boundary. This confirms that adversarial training moves the decision boundaries further from the data.
 
 \section{Discussion}
 
@@ -348,15 +416,17 @@ Fifth, the white-box assumption is not load-bearing for the standard model. HopS
 
 Sixth, robustness gained from $L_\infty$-bounded PGD adversarial training partially transfers to other threat models. Both HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$) succeed less often on the adversarially trained model than on the standard one, even though neither attack matches the threat model used during training. The transfer is partial, not free --- $L_0$ defenses ought to be designed against $L_0$ adversaries --- but the side effect is real.
 
+Seventh, the adversarially trained model's robustness is not an artifact of gradient masking. Adversarial examples crafted on the standard model --- with FGSM, PGD, or C\&W --- leave the robust model at 97--100\% accuracy (Section~\ref{sec:transfer_results}). A model that owed its robustness to obscured or shattered gradients would still fall to examples transferred from a fully differentiable substitute; this one does not, so the robustness measured in the white-box setting is real. The C\&W result makes the point most sharply: the attack that is strongest under white-box access transfers the worst, because its minimal perturbations overfit the source model's decision boundary.
+
 \subsection{Comparison with Literature}
 
-My results are consistent with published numbers. Madry et al.~\cite{madry2018towards} reported 45--47\% PGD robust accuracy at $\epsilon = 8/255$ on CIFAR-10 with adversarial training; I obtain 45.1\%. The clean accuracy of 83.9\% falls within the 82--87\% range reported in the literature. The DeepFool robustness radii are consistent with Moosavi-Dezfooli et al.~\cite{moosavidezfooli2016deepfool}, confirming that standard networks have small margins around the data.
+My results are consistent with published numbers. Madry et al.~\cite{madry2018towards} reported 45--47\% PGD robust accuracy at $\epsilon = 8/255$ on CIFAR-10 with adversarial training; I obtain 45.1\%. The clean accuracy of 83.9\% falls within the 82--87\% range reported in the literature. The DeepFool robustness radii are consistent with Moosavi-Dezfooli et al.~\cite{moosavidezfooli2016deepfool}, confirming that standard networks have small margins around the data. The Carlini--Wagner success rate of 100\% with a small $L_2$ matches the behaviour reported by Carlini and Wagner~\cite{carlini2017towards}, who introduced it as a benchmark precisely because it reliably finds minimal perturbations where weaker attacks give up.
 
 \subsection{Limitations and Observations}
 
-Several limitations apply. The experiments are restricted to CIFAR-10 ($32 \times 32$ images), and the same $\epsilon$ budget has different perceptual meaning at higher resolutions. I tested only ResNet-18; other architectures may exhibit different robustness properties. I used one PGD random restart; more restarts would provide tighter bounds on vulnerability. The black-box and $L_0$ evaluations are limited to subsets (\HSJN{} images for HopSkipJump, \OPN{} for One Pixel) due to per-image cost --- larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative picture. The Carlini--Wagner attack is not included; it would close the $L_2$-bounded white-box gap on top of the existing DeepFool numbers and is a natural next addition (Chapter~\ref{ch:conclusion}).
+Several limitations apply. The experiments are restricted to CIFAR-10 ($32 \times 32$ images), and the same $\epsilon$ budget has different perceptual meaning at higher resolutions. I tested only ResNet-18; other architectures may exhibit different robustness properties. I used one PGD random restart; more restarts would provide tighter bounds on vulnerability. The Carlini--Wagner, black-box, and $L_0$ evaluations are limited to subsets (\CWN{} images for C\&W, \HSJN{} for HopSkipJump, \OPN{} for One Pixel) due to per-image cost --- larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative picture.
 
 \section{Summary}
 
-I find that standard models are highly vulnerable to adversarial perturbations, and that PGD reveals this vulnerability more accurately than FGSM. Adversarial training provides genuine robustness at the cost of clean accuracy. The results are consistent with the literature, and the comparison across five attack methods --- spanning white-box and black-box settings, and $L_\infty$, $L_2$, and $L_0$ threat models --- gives a unified view of how the accuracy--robustness trade-off depends on the attacker's assumptions.
+I find that standard models are highly vulnerable to adversarial perturbations, and that PGD reveals this vulnerability more accurately than FGSM. Adversarial training provides genuine robustness at the cost of clean accuracy. The results are consistent with the literature, and the comparison across six attack methods --- spanning white-box, decision-based black-box, and transfer-based settings, and $L_\infty$, $L_2$, and $L_0$ threat models --- gives a unified view of how the accuracy--robustness trade-off depends on the attacker's assumptions.
 

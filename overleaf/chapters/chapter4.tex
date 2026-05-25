@@ -3,11 +3,11 @@
 
 \section{Introduction}
 
-This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, DeepFool, HopSkipJump, and One Pixel from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
+This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
 
 \section{System Architecture}
 
-I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all five attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
+I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all six attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
 
 I designed the system to be modular: adding a new attack requires writing a single file that conforms to the common attack interface. No changes to the rest of the codebase are needed.
 
@@ -85,6 +85,36 @@ where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The class with the smal
 
 The per-image processing makes DeepFool substantially slower than FGSM or PGD. However, it provides information that the other attacks do not: the actual distance from each input to the nearest decision boundary.
 
+\subsection{Carlini--Wagner Implementation}
+
+The Carlini--Wagner $L_2$ attack~\cite{carlini2017towards} also seeks a minimal perturbation, but solves a single optimization problem rather than DeepFool's greedy linearization, which makes it stronger at the cost of more iterations. The procedure is given in Algorithm~\ref{alg:cw}.
+
+\begin{algorithm}[htbp]
+\caption{Carlini--Wagner $L_2$ Attack}
+\label{alg:cw}
+\begin{algorithmic}[1]
+\REQUIRE Input $x$, label $y$, model $f_\theta$ with logits $Z$, confidence $\kappa$, search steps $S$, iterations $T$
+\ENSURE Adversarial example $x^{adv}$ with minimal $L_2$
+\STATE Map to tanh space: $w \gets \text{arctanh}(2x - 1)$
+\STATE Initialize $c$, bounds $[c_{lo}, c_{hi}] \gets [0, \infty]$, best $x^{adv} \gets x$
+\FOR{$s = 1$ to $S$}
+    \FOR{$t = 1$ to $T$}
+        \STATE $x' \gets \tfrac{1}{2}(\tanh(w) + 1)$
+        \STATE $f \gets \max\!\left(Z(x')_y - \max_{i \neq y} Z(x')_i,\ -\kappa\right)$
+        \STATE $\mathcal{L} \gets \|x' - x\|_2^2 + c \cdot f$
+        \STATE Update $w$ with one Adam step on $\nabla_w \mathcal{L}$
+        \IF{$x'$ is misclassified and $\|x' - x\|_2$ is the smallest seen}
+            \STATE $x^{adv} \gets x'$
+        \ENDIF
+    \ENDFOR
+    \STATE Binary search on $c$: shrink it if a solution was found this step, else grow it
+\ENDFOR
+\RETURN $x^{adv}$
+\end{algorithmic}
+\end{algorithm}
+
+My implementation runs on full batches. The optimization variable is $w$, initialized to $\text{arctanh}(2x - 1)$ (clamped to keep the inverse finite); the adversarial image is recovered as $x' = \tfrac{1}{2}(\tanh(w) + 1)$ at every step, which guarantees $x' \in [0, 1]$ without any clipping. The margin loss is computed from the logits rather than the softmax output: I read off the true-class logit and the largest competing logit (masking the true class with a large negative constant), and clamp their difference at $-\kappa$. The objective $\|x' - x\|_2^2 + c\,f(x')$ is minimized with Adam at learning rate $0.01$. The constant $c$ is set by binary search --- after each of the $S$ search steps I shrink $c$ for the images that were successfully attacked, to push for a smaller perturbation, and grow it for the rest, doubling it whenever no upper bound has been established. Across all search steps I keep, per image, the misclassified adversarial example with the smallest $L_2$, so the returned perturbation is the best found rather than the last one. I used $S = 8$ binary-search steps and $T = 200$ Adam iterations per step, with an early-abort check that ends a step once the loss stops improving. Because C\&W is fully batched and runs on the GPU, it is far cheaper per image than DeepFool or the black-box attacks, so I evaluate it on a larger subset. The implementation is about 120 lines and lives in \texttt{src/attacks/cw.py}.
+
 \subsection{HopSkipJump Implementation}
 
 HopSkipJump~\cite{chen2020hopskipjump} is a decision-based black-box attack: every query returns only the predicted label, never logits or gradients. The implementation has three nested operations.
@@ -108,6 +138,10 @@ The One Pixel Attack~\cite{su2019onepixel} searches for $k$ pixels and their RGB
 Each candidate solution is a flat vector of length $5k$, encoding $k$ tuples of $(x, y, r, g, b)$. The fitness is the model's softmax probability on the true class (untargeted attack); lower is better. I implemented standard DE/rand/1/bin: at each generation, for each member of the population, I form a trial by combining three randomly chosen members with mutation factor $F = 0.5$ and crossover rate $CR = 0.7$, evaluate the trial via a single batched forward pass, and replace the member if the trial has lower fitness. The attack terminates when the best candidate fools the model or the iteration budget is exhausted.
 
 I used population size 400 and 50 generations for the experiments. The attack requires no gradients, but it does need score-level access (probabilities) to drive the DE fitness, so the threat model is slightly stronger than HopSkipJump's strict label-only assumption. The implementation lives in \texttt{src/attacks/one\_pixel.py}.
+
+\subsection{Transferability Evaluation}
+
+The transferability study reuses the attack implementations above rather than introducing new attack code. I select the test images that both models classify correctly, craft FGSM, PGD, and C\&W examples against each model in turn, and record the other model's accuracy on the resulting examples. Because the attacks are deterministic given a fixed seed and the two models share the same architecture and $[0, 1]$ input convention, no special handling is needed beyond running each crafted batch of images through both models. The driver lives in \texttt{scripts/evaluate\_transfer.py}.
 
 \subsection{Adversarial Training Implementation}
 
@@ -159,6 +193,7 @@ adversarial-robustness/
 |   |   +-- fgsm.py            # FGSM attack
 |   |   +-- pgd.py             # PGD attack
 |   |   +-- deepfool.py        # DeepFool attack
+|   |   +-- cw.py              # Carlini-Wagner (L_2, optimization)
 |   |   +-- hopskipjump.py     # HopSkipJump (decision-based black-box)
 |   |   +-- one_pixel.py       # One Pixel attack (L_0, DE-based)
 |   +-- training/
@@ -174,7 +209,9 @@ adversarial-robustness/
 +-- scripts/
 |   +-- train.py               # Training entry point
 |   +-- evaluate.py            # White-box evaluation entry point
+|   +-- evaluate_cw.py         # Carlini-Wagner evaluation
 |   +-- evaluate_blackbox.py   # Black-box (HSJ, One Pixel) evaluation
+|   +-- evaluate_transfer.py   # Transferability study (cross-model)
 +-- configs/
 |   +-- config.yaml            # Hyperparameters
 +-- checkpoints/               # Saved model weights
@@ -191,5 +228,5 @@ I built a Streamlit web application to provide an interactive demonstration of t
 
 \section{Summary}
 
-This chapter described the implementation of five adversarial attacks from scratch, two training pipelines, and an interactive web demo. The main engineering challenges were memory management in PGD, numerical stability in DeepFool, the batch normalization issue during adversarial training, and the per-image cost of the black-box attacks (HopSkipJump and One Pixel) which required moving to subset-based evaluation. The next chapter presents the experimental results.
+This chapter described the implementation of six adversarial attacks from scratch, a transfer-based evaluation between the two models, two training pipelines, and an interactive web demo. The main engineering challenges were memory management in PGD, numerical stability in DeepFool, the batch normalization issue during adversarial training, and the per-image cost of the black-box attacks (HopSkipJump and One Pixel) which required moving to subset-based evaluation. The next chapter presents the experimental results.
 

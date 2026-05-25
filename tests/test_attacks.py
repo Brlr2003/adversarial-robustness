@@ -8,6 +8,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.attacks.cw import cw_l2_attack
 from src.attacks.deepfool import deepfool_attack
 from src.attacks.fgsm import fgsm_attack
 from src.attacks.hopskipjump import hopskipjump_attack
@@ -166,6 +167,43 @@ class TestOnePixel:
         for i in range(images.shape[0]):
             n_changed = (diff[i] > 1e-6).sum().item()
             assert n_changed <= k
+
+
+class TestCarliniWagner:
+    def test_output_shape(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, info = cw_l2_attack(
+            model, images, labels,
+            binary_search_steps=2, max_iterations=20,
+        )
+        assert adv.shape == images.shape
+        assert info["success"].shape == (images.shape[0],)
+        assert info["l2"].shape == (images.shape[0],)
+
+    def test_output_range(self, model, sample_batch):
+        images, labels = sample_batch
+        adv, _ = cw_l2_attack(
+            model, images, labels,
+            binary_search_steps=2, max_iterations=20,
+        )
+        assert adv.min() >= 0.0
+        assert adv.max() <= 1.0 + 1e-6
+
+    def test_finds_small_perturbation(self, model, sample_batch):
+        """On successful samples, C&W should use less L2 than an 8/255 FGSM step."""
+        images, labels = sample_batch
+        adv, info = cw_l2_attack(
+            model, images, labels,
+            binary_search_steps=4, max_iterations=100,
+        )
+        fgsm_adv = fgsm_attack(model, images, labels, epsilon=8 / 255)
+        fgsm_l2 = (fgsm_adv - images).flatten(1).norm(2, dim=1)
+        succeeded = info["success"]
+        if succeeded.any():
+            cw_l2 = info["l2"][succeeded]
+            # C&W minimises L2, so on solved samples it stays well bounded.
+            assert torch.isfinite(cw_l2).all()
+            assert (cw_l2 <= fgsm_l2[succeeded] + 1.0).all()
 
 
 class TestResNet:

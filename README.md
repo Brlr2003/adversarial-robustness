@@ -2,12 +2,13 @@
 
 An end-to-end ML pipeline that trains, attacks, defends, and deploys deep neural networks to demonstrate adversarial robustness. Users can interact with a live demo to upload images, apply adversarial attacks in real-time, and compare standard vs. robust model predictions.
 
-**Live Demo:** [HuggingFace Spaces](https://huggingface.co/spaces/YOUR_USERNAME/adversarial-robustness-demo)
+**Live Demo:** [HuggingFace Spaces](https://huggingface.co/spaces/omaralsafarti/adversarial-robustness-demo)
 
 ## 🎯 What This Project Demonstrates
 
 - **Model Training**: Train ResNet-18 on CIFAR-10 from scratch using PyTorch
-- **Adversarial Attacks**: Implement FGSM, PGD, DeepFool, HopSkipJump (decision-based black-box), and One Pixel ($L_0$) attacks
+- **Adversarial Attacks**: Implement FGSM, PGD, DeepFool, Carlini–Wagner ($L_2$), HopSkipJump (decision-based black-box), and One Pixel ($L_0$) attacks
+- **Transferability**: Cross-model transfer study (standard ↔ robust) for FGSM, PGD, and C&W
 - **Adversarial Training**: Train a robust model using PGD-based adversarial training
 - **Model Evaluation**: Compare accuracy, robustness, and confidence under attack
 - **Experiment Tracking**: Log all experiments with MLflow
@@ -27,6 +28,7 @@ adversarial-robustness-demo/
 │   │   ├── fgsm.py      # Fast Gradient Sign Method
 │   │   ├── pgd.py       # Projected Gradient Descent
 │   │   ├── deepfool.py  # DeepFool attack
+│   │   ├── cw.py        # Carlini-Wagner (L_2, optimization-based)
 │   │   ├── hopskipjump.py  # HopSkipJump (decision-based black-box)
 │   │   └── one_pixel.py    # One Pixel attack (L_0, differential evolution)
 │   ├── training/        # Training loops
@@ -49,7 +51,9 @@ adversarial-robustness-demo/
 ├── scripts/
 │   ├── train.py             # Training entry point
 │   ├── evaluate.py          # White-box evaluation entry point
-│   └── evaluate_blackbox.py # Black-box (HSJ, One Pixel) evaluation
+│   ├── evaluate_cw.py       # Carlini-Wagner evaluation
+│   ├── evaluate_blackbox.py # Black-box (HSJ, One Pixel) evaluation
+│   └── evaluate_transfer.py # Transferability study (cross-model)
 ├── tests/
 │   └── test_attacks.py  # Unit tests
 ├── .github/
@@ -65,8 +69,8 @@ adversarial-robustness-demo/
 
 ### 1. Setup
 ```bash
-git clone https://github.com/YOUR_USERNAME/adversarial-robustness-demo.git
-cd adversarial-robustness-demo
+git clone https://github.com/Brlr2003/adversarial-robustness.git
+cd adversarial-robustness
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
@@ -122,6 +126,9 @@ This project is inspired by adversarial robustness research, particularly:
 - Goodfellow et al., "Explaining and Harnessing Adversarial Examples" (FGSM)
 - Madry et al., "Towards Deep Learning Models Resistant to Adversarial Attacks" (PGD)
 - Moosavi-Dezfooli et al., "DeepFool: A Simple and Accurate Fooling Method" (DeepFool)
+- Carlini & Wagner, "Towards Evaluating the Robustness of Neural Networks" (C&W)
+- Chen, Jordan & Wainwright, "HopSkipJumpAttack" (decision-based black-box)
+- Su, Vargas & Sakurai, "One Pixel Attack for Fooling Deep Neural Networks" (One Pixel)
 
 ## 📄 License
 

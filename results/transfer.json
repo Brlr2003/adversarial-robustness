@@ -1,0 +1,40 @@
+{
+  "num_images": 1000,
+  "n_common_correct": 823,
+  "epsilon": 0.03137254901960784,
+  "pgd_steps": 20,
+  "seed": 0,
+  "device": "mps",
+  "matrices": {
+    "fgsm": {
+      "standard": {
+        "standard": 37.91008505467801,
+        "robust": 97.20534629404617
+      },
+      "robust": {
+        "standard": 87.60631834750912,
+        "robust": 67.43620899149452
+      }
+    },
+    "pgd": {
+      "standard": {
+        "standard": 0.0,
+        "robust": 98.66342648845686
+      },
+      "robust": {
+        "standard": 81.8955042527339,
+        "robust": 56.25759416767922
+      }
+    },
+    "cw": {
+      "standard": {
+        "standard": 0.0,
+        "robust": 99.87849331713244
+      },
+      "robust": {
+        "standard": 93.07411907654921,
+        "robust": 0.0
+      }
+    }
+  }
+}

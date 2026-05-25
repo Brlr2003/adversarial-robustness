@@ -3,11 +3,11 @@
 
 \section{Conclusion}
 
-I set out to study how vulnerable deep neural networks are to adversarial attacks and whether adversarial training provides an effective defense. I implemented five attacks --- FGSM, PGD, DeepFool, HopSkipJump, and One Pixel --- from scratch, evaluated them on a ResNet-18 trained on CIFAR-10, and applied PGD-based adversarial training. The five attacks span both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$).
+I set out to study how vulnerable deep neural networks are to adversarial attacks and whether adversarial training provides an effective defense. I implemented six attacks --- FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel --- from scratch, evaluated them on a ResNet-18 trained on CIFAR-10, ran a transfer-based study between my two models, and applied PGD-based adversarial training. The six attacks span both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$).
 
-Standard models are extremely vulnerable. My ResNet-18 achieves 94.1\% clean accuracy, but a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. The perturbation is imperceptible. Evaluating with FGSM alone (18.3\% robust accuracy) gives a misleading picture --- the gap between FGSM and PGD illustrates why multi-step attacks are necessary for reliable evaluation.
+Standard models are extremely vulnerable. My ResNet-18 achieves 94.1\% clean accuracy, but a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. The perturbation is imperceptible. Carlini--Wagner, the strongest $L_2$ attack I tested, fools every correctly classified image with a median perturbation of only $L_2 = 0.104$. Evaluating with FGSM alone (18.3\% robust accuracy) gives a misleading picture --- the gap between FGSM and PGD illustrates why multi-step attacks are necessary for reliable evaluation.
 
-Adversarial training brings PGD robust accuracy from 1.2\% to 45.1\%, at a cost of 10.2 percentage points of clean accuracy (94.1\% to 83.9\%). Whether this trade-off is acceptable depends on the application. For safety-critical systems, it is clearly preferable to have a model that degrades gracefully under attack.
+Adversarial training brings PGD robust accuracy from 1.2\% to 45.1\%, at a cost of 10.2 percentage points of clean accuracy (94.1\% to 83.9\%). The same model forces every $L_2$ and decision-based attack to spend several times more perturbation, resists adversarial examples transferred from the standard model, and is harder to break with a single pixel, so its robustness is not specific to the attack it was trained against. Whether this trade-off is acceptable depends on the application. For safety-critical systems, it is clearly preferable to have a model that degrades gracefully under attack.
 
 I also observe that the adversarially trained model exhibits better confidence calibration. The standard model assigns near-100\% confidence to incorrect predictions under attack. The adversarially trained model produces more reasonable confidence scores, which may be valuable on its own for applications that need to detect unreliable predictions.
 
@@ -16,9 +16,9 @@ I also observe that the adversarially trained model exhibits better confidence c
 The contributions of this thesis are:
 
 \begin{enumerate}
-    \item \textbf{White-box attack comparison.} I evaluate FGSM, PGD, and DeepFool on the same model with the same evaluation protocol. PGD is the strongest attack (1.2\% surviving accuracy), FGSM is weaker (18.3\%), and DeepFool achieves a 91.1\% success rate with perturbations that are $5.4\times$ smaller in $L_2$.
+    \item \textbf{White-box attack comparison.} I evaluate FGSM, PGD, DeepFool, and Carlini--Wagner on the same model with the same evaluation protocol. PGD is the strongest $L_\infty$ attack (1.2\% surviving accuracy) and FGSM the weakest (18.3\%); on the $L_2$ axis, Carlini--Wagner finds the smallest perturbations, beating DeepFool, and is the standard against which the adversarially trained model should be measured.
 
-    \item \textbf{Black-box and $L_0$ evaluation.} I implement HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$, gradient-free), and use them to test whether the white-box conclusions hold against attackers with weaker assumptions. The standard model is broken in both settings; the adversarially trained model is more resistant in both, even though PGD adversarial training was not designed against either threat model.
+    \item \textbf{Black-box, transfer, and $L_0$ evaluation.} I implement HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$, gradient-free), and run a transfer-based study between the two models, to test whether the white-box conclusions hold against attackers with weaker assumptions. The standard model is broken in the decision-based and $L_0$ settings; the adversarially trained model is more resistant in both, even though PGD adversarial training was not designed against either threat model. The transfer study shows that adversarial examples crafted on the standard model largely fail to fool the robust model, ruling out gradient masking as the source of its robustness.
 
     \item \textbf{Adversarial training evaluation.} I report 45.1\% PGD robust accuracy and 83.9\% clean accuracy, consistent with the results of Madry et al.~\cite{madry2018towards}. The robustness gain partially transfers to black-box and $L_0$ attacks, suggesting that PGD-AT regularises the decision boundary in ways that go beyond the trained threat model.
 
@@ -36,7 +36,7 @@ I acknowledge the following limitations:
 
     \item \textbf{ResNet-18 only.} I tested a single architecture. Other architectures, such as Vision Transformers, may exhibit different robustness properties.
 
-    \item \textbf{Black-box and $L_0$ on subsets only.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than gradient-based attacks. I evaluated them on subsets (\HSJN{} and \OPN{} images respectively) rather than the full test set. Larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative conclusions. The Carlini--Wagner attack remains the most useful next addition for the white-box $L_2$ axis.
+    \item \textbf{Black-box and $L_0$ on subsets only.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than gradient-based attacks. I evaluated them on subsets (\HSJN{} and \OPN{} images respectively) rather than the full test set. Carlini--Wagner is batched and runs on a larger subset, but still not the full test set. Larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative conclusions.
 
     \item \textbf{Single defense.} I evaluated only PGD adversarial training. Certified defenses, randomized smoothing, and input preprocessing are also worth investigating.
 
@@ -50,16 +50,14 @@ I identify several directions for future work.
 
 \subsection{Short-term}
 
-The HopSkipJump and One Pixel results in Chapter~\ref{ch:results} close the most obvious gap in earlier drafts of this thesis: every attack used to be white-box. The remaining short-term extensions are:
+The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chapter~\ref{ch:results} close the most obvious gap in earlier drafts of this thesis: every attack used to be white-box and $L_\infty$. The evaluation now spans $L_\infty$, $L_2$, and $L_0$, and white-box, decision-based, and transfer-based settings. The remaining short-term extensions are:
 
 \begin{itemize}
-    \item \textbf{Carlini--Wagner attack.} C\&W remains the standard strong attack for evaluating defenses, particularly on the $L_2$ axis where DeepFool gives only a per-image minimum perturbation. Running C\&W against the adversarially trained model, even on a 500--1000 image subset, would strengthen the robustness claims at $L_2$. The computational cost was the original reason I deferred it; the same subset strategy used for HopSkipJump and One Pixel applies.
-
-    \item \textbf{Transferability study.} Testing whether adversarial examples generated against the standard model transfer to the adversarially trained model is the cheapest possible black-box evaluation and complements the decision-based attack already in the thesis. The substitute-model attack of Papernot et al.~\cite{papernot2017practical} is a natural candidate.
-
     \item \textbf{Additional PGD restarts.} Using a single random restart gives a lower bound on vulnerability. Running PGD with 5--10 restarts would tighten this bound and is essentially free to add.
 
-    \item \textbf{Larger HopSkipJump and One Pixel evaluations.} The current black-box evaluations use \HSJN{} and \OPN{} images respectively; running on the full test set would tighten the standard error on the reported numbers, although the qualitative conclusions are unlikely to change.
+    \item \textbf{Larger black-box evaluations.} The current HopSkipJump and One Pixel evaluations use \HSJN{} and \OPN{} images respectively; running on the full test set would tighten the standard error on the reported numbers, although the qualitative conclusions are unlikely to change.
+
+    \item \textbf{Stronger Carlini--Wagner settings.} I run C\&W with a fixed number of binary-search steps and Adam iterations on a subset. More search steps and a higher iteration budget on the full test set would further tighten the reported $L_2$ distances, particularly for the adversarially trained model.
 \end{itemize}
 
 \subsection{Long-term}

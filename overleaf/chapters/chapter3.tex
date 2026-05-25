@@ -7,16 +7,16 @@ This chapter describes the experimental setup. I cover the datasets, model archi
 
 \section{Research Design}
 
-I structured the work into four phases:
+I structured the work into five phases:
 
 \begin{enumerate}
     \item \textbf{Model Training:} Train baseline CNNs on the benchmark datasets and establish clean accuracy.
 
-    \item \textbf{White-Box Attack Implementation:} Implement FGSM, BIM/PGD, and DeepFool from scratch and evaluate them against the baselines.
+    \item \textbf{White-Box Attack Implementation:} Implement FGSM, BIM/PGD, DeepFool, and Carlini--Wagner from scratch and evaluate them against the baselines.
 
     \item \textbf{Defense Application:} Apply PGD-based adversarial training and measure the resulting robustness.
 
-    \item \textbf{Black-Box Attack Implementation:} Implement HopSkipJump and One Pixel from scratch to test whether the white-box conclusions hold under weaker attacker assumptions.
+    \item \textbf{Black-Box Attack Implementation:} Implement HopSkipJump and One Pixel from scratch, and run a transfer-based study between the two models, to test whether the white-box conclusions hold under weaker attacker assumptions.
 
     \item \textbf{Comparative Analysis:} Compare all attacks and models under identical evaluation conditions.
 \end{enumerate}
@@ -91,23 +91,28 @@ Here $\Pi_{x,\epsilon}$ denotes projection onto the $\epsilon$-ball. I varied th
 
 DeepFool~\cite{moosavidezfooli2016deepfool} differs from the above methods in that it does not operate within a fixed $\epsilon$ budget. Instead, it finds the \emph{smallest} perturbation that changes the model's prediction by iteratively linearizing the classifier and computing the distance to the nearest decision boundary. The full algorithm is described in Chapter~\ref{ch:implementation}.
 
-\subsection{(Optional) Carlini-Wagner Attack}
+\subsection{Carlini--Wagner ($L_2$)}
 
-I initially planned to include the C\&W attack~\cite{carlini2017towards}:
+The Carlini--Wagner attack~\cite{carlini2017towards} casts the search for a minimal perturbation as an optimization problem:
 
 \begin{equation}
-    \min_\delta \|\delta\|_2 + c \cdot f(x + \delta)
+    \min_\delta \|\delta\|_2^2 + c \cdot f(x + \delta), \qquad \text{subject to } x + \delta \in [0, 1]^n,
+    \label{eq:cw_method}
 \end{equation}
 
-where $f$ is designed so that $f(x') \leq 0$ implies misclassification. However, the computational cost proved prohibitive on the hardware available to me, and I was unable to run it within a reasonable time frame. I discuss this in more detail as a short-term extension in Chapter~\ref{ch:conclusion}.
+where $f$ is a margin loss that is non-positive exactly when the example is misclassified. Three components make the attack strong. The box constraint is removed by the change of variables $x + \delta = \tfrac{1}{2}(\tanh(w) + 1)$, which keeps every iterate inside $[0, 1]^n$ and lets an unconstrained optimizer (Adam) run freely over $w$. The margin loss $f(x') = \max(Z(x')_y - \max_{i \neq y} Z(x')_i,\, -\kappa)$ uses the logits $Z$ rather than the softmax output, and reaches its floor once the true class has been beaten by margin $\kappa$, so the remaining budget is spent shrinking $\|\delta\|_2$ rather than over-classifying. The constant $c$ trades the two terms against each other and is set per image by binary search. I had deferred this attack in an earlier draft on compute grounds; the change of variables together with batched optimization brings it within budget, so I implement and evaluate it on a subset of the test set. The full algorithm is described in Chapter~\ref{ch:implementation}.
 
 \subsection{HopSkipJump}
 
-HopSkipJump~\cite{chen2020hopskipjump} relaxes the white-box assumption used by FGSM, PGD, and DeepFool. The attacker sees only the predicted label, not gradients or logits. The procedure alternates between (i) binary-searching along the segment between the clean image and an adversarial point to land exactly on the decision boundary, and (ii) estimating the gradient direction at that boundary point via Monte Carlo sampling: query the model on $N$ random perturbations and form a sign-weighted average of the displacement vectors. A geometric step in the estimated direction is then projected back to the boundary. The attack tracks only one budget --- total queries --- and converges to small $L_2$ perturbations within a few thousand queries per image. The full algorithm is described in Chapter~\ref{ch:implementation}.
+HopSkipJump~\cite{chen2020hopskipjump} relaxes the white-box assumption used by FGSM, PGD, DeepFool, and Carlini--Wagner. The attacker sees only the predicted label, not gradients or logits. The procedure alternates between (i) binary-searching along the segment between the clean image and an adversarial point to land exactly on the decision boundary, and (ii) estimating the gradient direction at that boundary point via Monte Carlo sampling: query the model on $N$ random perturbations and form a sign-weighted average of the displacement vectors. A geometric step in the estimated direction is then projected back to the boundary. The attack tracks only one budget --- total queries --- and converges to small $L_2$ perturbations within a few thousand queries per image. The full algorithm is described in Chapter~\ref{ch:implementation}.
 
 \subsection{One Pixel Attack}
 
 The One Pixel Attack~\cite{su2019onepixel} operates under an $L_0$ rather than $L_\infty$ threat model: the attacker may modify at most $k$ pixels but each pixel can take any RGB value. The search space is non-differentiable in the pixel coordinates, so the original paper uses differential evolution. Each candidate solution encodes $k$ tuples of $(x, y, r, g, b)$; the fitness is the model's softmax probability on the true class, and DE/rand/1/bin minimizes it. The attack is a useful contrast to gradient-based attacks because its perturbations are concentrated rather than spread across the input, which probes a different kind of vulnerability. The full algorithm is described in Chapter~\ref{ch:implementation}.
+
+\subsection{Transferability Evaluation}
+
+Adversarial examples often transfer: an example crafted against one model can fool a different model trained on the same task~\cite{papernot2017practical}. Transfer underpins the most practical black-box threat model --- the attacker trains a substitute, attacks it with full white-box access, and replays the resulting examples against the victim, which is never queried during the search. I evaluate transfer directly between my two trained models. For each ordered pair (source, target) and each of FGSM, PGD, and Carlini--Wagner, I craft examples against the source model and measure the target model's accuracy on them. To keep the baseline clean I restrict the evaluation to images that both models classify correctly, so the diagonal of the resulting matrix is the ordinary white-box robust accuracy and the off-diagonal entries isolate the transfer effect. This is complementary to HopSkipJump, which is decision-based black-box on the victim itself rather than transfer-based.
 
 
 \section{Defense: Adversarial Training}
@@ -166,7 +171,7 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
         \textbf{Dataset} & \textbf{Model} & \textbf{Attacks} & \textbf{Defense} \\
         \midrule
         MNIST & Small CNN & FGSM, PGD, DeepFool & FGSM-AT \\
-        CIFAR-10 & ResNet-18/Custom & FGSM, PGD, DeepFool, HopSkipJump, One Pixel & PGD-AT \\
+        CIFAR-10 & ResNet-18/Custom & FGSM, PGD, DeepFool, C\&W, HopSkipJump, One Pixel & PGD-AT \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -183,5 +188,5 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
 
 \section{Summary}
 
-This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, five attacks implemented from scratch (three white-box, two black-box), PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
+This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, six attacks implemented from scratch (four white-box --- FGSM, PGD, DeepFool, Carlini--Wagner --- and two black-box --- HopSkipJump, One Pixel), a transfer-based evaluation between the two models, PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
 
