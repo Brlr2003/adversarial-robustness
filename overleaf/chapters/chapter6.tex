@@ -63,7 +63,7 @@ The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chap
 \subsection{Long-term}
 
 \begin{itemize}
-    \item \textbf{ImageNet-scale experiments.} Larger images, more classes, and larger models would test whether my findings generalize.
+    \item \textbf{ImageNet-scale experiments.} Larger images, more classes, and larger models would test whether my findings generalize. The natural starting point for the black-box side of that extension is NbuGAN~\cite{topal2026nbugan}, which combines a generator network with the Noise Blowing-Up technique and reports $93.3\%$ targeted success on native-resolution ImageNet at $\approx 55$ seconds per image --- faster than every decision-based black-box attack I tested at CIFAR-10 scale, including HopSkipJump.
 
     \item \textbf{Certified defenses.} Randomized smoothing provides formal robustness guarantees and would complement the empirical approach taken here.
 
