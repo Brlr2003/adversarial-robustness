@@ -11,7 +11,7 @@ In this chapter I review the existing literature on adversarial examples for dee
 
 Szegedy et al.~\cite{szegedy2014intriguing} first demonstrated that neural networks with high test accuracy can be fooled by adding small, imperceptible perturbations to their inputs. Prior to this result, it was generally assumed that these networks were learning meaningful features of the data. The finding that small perturbations could cause confident misclassification suggested otherwise.
 
-Goodfellow et al.~\cite{goodfellow2015explaining} proposed that the vulnerability arises from the linear behavior of neural networks in high-dimensional spaces. Even though the networks contain nonlinear activation functions, a perturbation that is small in each dimension can accumulate across many dimensions and produce a large change in the output. To demonstrate this, they introduced FGSM --- a method that generates adversarial examples using a single gradient step. The method is simple, and the fact that it works well indicates that the vulnerability is systematic rather than incidental.
+Goodfellow et al.~\cite{goodfellow2015explaining} proposed that the vulnerability arises from the linear behavior of neural networks in high-dimensional spaces. Even though the networks contain nonlinear activation functions, a perturbation that is small in each dimension can accumulate across many dimensions and produce a large change in the output. To demonstrate this, they introduced FGSM, a method that generates adversarial examples using a single gradient step. The method is simple, and the fact that it works well indicates that the vulnerability is systematic rather than incidental.
 
 \subsection{Threat Model Taxonomy}
 
@@ -72,7 +72,7 @@ where $f$ is designed such that $f(x') \leq 0$ implies misclassification. The C\
 
 \subsubsection{Universal Adversarial Perturbations}
 
-Moosavi-Dezfooli et al.~\cite{moosavidezfooli2017universal} showed that a single, fixed perturbation can fool a classifier on the majority of inputs. This is not an input-specific perturbation --- the same noise pattern is applied to all images. The existence of such universal perturbations suggests that the vulnerability is structural rather than tied to individual inputs.
+Moosavi-Dezfooli et al.~\cite{moosavidezfooli2017universal} showed that a single, fixed perturbation can fool a classifier on the majority of inputs. This is not an input-specific perturbation: the same noise pattern is applied to all images. The existence of such universal perturbations suggests that the vulnerability is structural rather than tied to individual inputs.
 
 \subsection{Black-Box Attacks}
 
@@ -84,7 +84,7 @@ Papernot et al.~\cite{papernot2017practical} showed that white-box access is not
 
 \subsubsection{Score-Based Black-Box Attacks}
 
-Score-based attacks assume the attacker sees the full probability vector but has no gradient. Chen et al.~\cite{chen2017zoo} introduced ZOO, which estimates gradients from finite differences of the output probabilities and then applies Carlini-Wagner-style optimization. The approach works but is expensive --- finite-difference gradient estimation on a $32 \times 32 \times 3$ input costs on the order of thousands of queries per image. Ilyas et al.~\cite{ilyas2018blackbox} improved this with natural evolution strategies, which estimate gradients from a smaller number of random directions and reduce the query count by roughly an order of magnitude.
+Score-based attacks assume the attacker sees the full probability vector but has no gradient. Chen et al.~\cite{chen2017zoo} introduced ZOO, which estimates gradients from finite differences of the output probabilities and then applies Carlini-Wagner-style optimization. The approach works but is expensive: finite-difference gradient estimation on a $32 \times 32 \times 3$ input costs on the order of thousands of queries per image. Ilyas et al.~\cite{ilyas2018blackbox} improved this with natural evolution strategies, which estimate gradients from a smaller number of random directions and reduce the query count by roughly an order of magnitude.
 
 \subsubsection{Decision-Based Black-Box Attacks}
 
@@ -142,7 +142,7 @@ I identify several gaps in the existing literature:
 
     \item The accuracy--robustness trade-off is hard to assess from the literature because experimental setups vary: different $\epsilon$ values, different numbers of PGD steps, different architectures. It is often unclear whether differences in reported numbers come from the method or the setup.
 
-    \item Implementation details are frequently underspecified. Papers report hyperparameters but omit details that matter in practice --- for example, the handling of batch normalization during adversarial training, which I found to have a substantial effect on the final model.
+    \item Implementation details are frequently underspecified. Papers report hyperparameters but omit details that matter in practice. An example is the handling of batch normalization during adversarial training, which I found to have a substantial effect on the final model.
 \end{enumerate}
 
 This thesis addresses these gaps by providing a single study with a unified codebase, consistent evaluation, and sufficient implementation detail for reproducibility.

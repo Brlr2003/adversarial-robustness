@@ -3,9 +3,9 @@
 
 \section{Conclusion}
 
-I set out to study how vulnerable deep neural networks are to adversarial attacks and whether adversarial training provides an effective defense. I implemented six attacks --- FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel --- from scratch, evaluated them on a ResNet-18 trained on CIFAR-10, ran a transfer-based study between my two models, and applied PGD-based adversarial training. The six attacks span both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$).
+I set out to study how vulnerable deep neural networks are to adversarial attacks and whether adversarial training provides an effective defense. I implemented six attacks (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) from scratch, evaluated them on a ResNet-18 trained on CIFAR-10, ran a transfer-based study between my two models, and applied PGD-based adversarial training. The six attacks span both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$).
 
-Standard models are extremely vulnerable. My ResNet-18 achieves 94.1\% clean accuracy, but a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. The perturbation is imperceptible. Carlini--Wagner, the strongest $L_2$ attack I tested, fools every correctly classified image with a median perturbation of only $L_2 = 0.104$. Evaluating with FGSM alone (18.3\% robust accuracy) gives a misleading picture --- the gap between FGSM and PGD illustrates why multi-step attacks are necessary for reliable evaluation.
+Standard models are extremely vulnerable. My ResNet-18 achieves 94.1\% clean accuracy, but a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. The perturbation is imperceptible. Carlini--Wagner, the strongest $L_2$ attack I tested, fools every correctly classified image with a median perturbation of only $L_2 = 0.104$. Evaluating with FGSM alone (18.3\% robust accuracy) gives a misleading picture. The gap between FGSM and PGD illustrates why multi-step attacks are necessary for reliable evaluation.
 
 Adversarial training brings PGD robust accuracy from 1.2\% to 45.1\%, at a cost of 10.2 percentage points of clean accuracy (94.1\% to 83.9\%). The same model forces every $L_2$ and decision-based attack to spend several times more perturbation, resists adversarial examples transferred from the standard model, and is harder to break with a single pixel, so its robustness is not specific to the attack it was trained against. Whether this trade-off is acceptable depends on the application. For safety-critical systems, it is clearly preferable to have a model that degrades gracefully under attack.
 
@@ -63,7 +63,7 @@ The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chap
 \subsection{Long-term}
 
 \begin{itemize}
-    \item \textbf{ImageNet-scale experiments.} Larger images, more classes, and larger models would test whether my findings generalize. The natural starting point for the black-box side of that extension is NbuGAN~\cite{topal2026nbugan}, which combines a generator network with the Noise Blowing-Up technique and reports $93.3\%$ targeted success on native-resolution ImageNet at $\approx 55$ seconds per image --- faster than every decision-based black-box attack I tested at CIFAR-10 scale, including HopSkipJump.
+    \item \textbf{ImageNet-scale experiments.} Larger images, more classes, and larger models would test whether my findings generalize. The natural starting point for the black-box side of that extension is NbuGAN~\cite{topal2026nbugan}, which combines a generator network with the Noise Blowing-Up technique and reports $93.3\%$ targeted success on native-resolution ImageNet at $\approx 55$ seconds per image, faster than every decision-based black-box attack I tested at CIFAR-10 scale, including HopSkipJump.
 
     \item \textbf{Certified defenses.} Randomized smoothing provides formal robustness guarantees and would complement the empirical approach taken here.
 
@@ -78,5 +78,5 @@ The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chap
 
 \section{Final Remarks}
 
-Adversarial vulnerability is one of the main open problems in deploying deep learning systems. My experiments demonstrate both the severity of the problem --- a 94.1\%-accurate model reduced to 1.2\% by an imperceptible white-box perturbation, and broken with a few hundred queries by an attacker who only sees predicted labels --- and the effectiveness of adversarial training as a defense across multiple threat models, despite its cost. As deep learning is deployed in settings where errors have real consequences, addressing adversarial robustness becomes increasingly important. I hope that the code, results, and demo from this thesis are useful to others working in this area.
+Adversarial vulnerability is one of the main open problems in deploying deep learning systems. My experiments demonstrate both the severity of the problem (a 94.1\%-accurate model reduced to 1.2\% by an imperceptible white-box perturbation, and broken with a few hundred queries by an attacker who only sees predicted labels) and the effectiveness of adversarial training as a defense across multiple threat models, despite its cost. As deep learning is deployed in settings where errors have real consequences, addressing adversarial robustness becomes increasingly important. I hope that the code, results, and demo from this thesis are useful to others working in this area.
 

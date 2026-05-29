@@ -104,7 +104,7 @@ where $f$ is a margin loss that is non-positive exactly when the example is misc
 
 \subsection{HopSkipJump}
 
-HopSkipJump~\cite{chen2020hopskipjump} relaxes the white-box assumption used by FGSM, PGD, DeepFool, and Carlini--Wagner. The attacker sees only the predicted label, not gradients or logits. The procedure alternates between (i) binary-searching along the segment between the clean image and an adversarial point to land exactly on the decision boundary, and (ii) estimating the gradient direction at that boundary point via Monte Carlo sampling: query the model on $N$ random perturbations and form a sign-weighted average of the displacement vectors. A geometric step in the estimated direction is then projected back to the boundary. The attack tracks only one budget --- total queries --- and converges to small $L_2$ perturbations within a few thousand queries per image. The full algorithm is described in Chapter~\ref{ch:implementation}.
+HopSkipJump~\cite{chen2020hopskipjump} relaxes the white-box assumption used by FGSM, PGD, DeepFool, and Carlini--Wagner. The attacker sees only the predicted label, not gradients or logits. The procedure alternates between (i) binary-searching along the segment between the clean image and an adversarial point to land exactly on the decision boundary, and (ii) estimating the gradient direction at that boundary point via Monte Carlo sampling: query the model on $N$ random perturbations and form a sign-weighted average of the displacement vectors. A geometric step in the estimated direction is then projected back to the boundary. The attack tracks only one budget (total queries) and converges to small $L_2$ perturbations within a few thousand queries per image. The full algorithm is described in Chapter~\ref{ch:implementation}.
 
 \subsection{One Pixel Attack}
 
@@ -112,7 +112,7 @@ The One Pixel Attack~\cite{su2019onepixel} operates under an $L_0$ rather than $
 
 \subsection{Transferability Evaluation}
 
-Adversarial examples often transfer: an example crafted against one model can fool a different model trained on the same task~\cite{papernot2017practical}. Transfer underpins the most practical black-box threat model --- the attacker trains a substitute, attacks it with full white-box access, and replays the resulting examples against the victim, which is never queried during the search. I evaluate transfer directly between my two trained models. For each ordered pair (source, target) and each of FGSM, PGD, and Carlini--Wagner, I craft examples against the source model and measure the target model's accuracy on them. To keep the baseline clean I restrict the evaluation to images that both models classify correctly, so the diagonal of the resulting matrix is the ordinary white-box robust accuracy and the off-diagonal entries isolate the transfer effect. This is complementary to HopSkipJump, which is decision-based black-box on the victim itself rather than transfer-based.
+Adversarial examples often transfer: an example crafted against one model can fool a different model trained on the same task~\cite{papernot2017practical}. Transfer underpins the most practical black-box threat model: the attacker trains a substitute, attacks it with full white-box access, and replays the resulting examples against the victim, which is never queried during the search. I evaluate transfer directly between my two trained models. For each ordered pair (source, target) and each of FGSM, PGD, and Carlini--Wagner, I craft examples against the source model and measure the target model's accuracy on them. To keep the baseline clean I restrict the evaluation to images that both models classify correctly, so the diagonal of the resulting matrix is the ordinary white-box robust accuracy and the off-diagonal entries isolate the transfer effect. This is complementary to HopSkipJump, which is decision-based black-box on the victim itself rather than transfer-based.
 
 
 \section{Defense: Adversarial Training}
@@ -188,5 +188,5 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
 
 \section{Summary}
 
-This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, six attacks implemented from scratch (four white-box --- FGSM, PGD, DeepFool, Carlini--Wagner --- and two black-box --- HopSkipJump, One Pixel), a transfer-based evaluation between the two models, PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
+This chapter described the experimental design: standard benchmark datasets, a well-known model architecture, six attacks implemented from scratch (four white-box: FGSM, PGD, DeepFool, and Carlini--Wagner; two black-box: HopSkipJump and One Pixel), a transfer-based evaluation between the two models, PGD adversarial training as the defense, and a set of metrics for evaluation. The next chapter covers the implementation.
 
