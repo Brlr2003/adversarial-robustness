@@ -11,14 +11,6 @@ Szegedy et al.~\cite{szegedy2014intriguing} were the first to show that well-tra
 
 I chose this topic because I wanted to move beyond theoretical discussion and actually measure how fragile standard models are, what adversarial training costs, and how different attacks compare when evaluated under identical conditions. Implementing the attacks from scratch, rather than relying on existing libraries, was a deliberate choice. It forced me to confront the implementation details that papers often leave out.
 
-% TODO: Consider adding a figure showing adversarial example concept
-% \begin{figure}[htbp]
-%     \centering
-%     \includegraphics[width=0.8\textwidth]{figures/adversarial_example.png}
-%     \caption{Illustration of an adversarial example: a small perturbation causes misclassification.}
-%     \label{fig:adversarial_example}
-% \end{figure}
-
 \section{Problem Statement}
 
 I study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses four questions:

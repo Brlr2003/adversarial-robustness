@@ -29,15 +29,14 @@ MNIST~\cite{lecun1998mnist} contains 70,000 grayscale images of handwritten digi
 
 \subsection{CIFAR-10}
 
-CIFAR-10 contains 60,000 color images across 10 classes, with 50,000 training and 10,000 test images at $32 \times 32$ resolution with 3 color channels. This dataset is substantially harder than MNIST and requires a capable model architecture to achieve good accuracy. I chose CIFAR-10 as the primary benchmark because it provides a non-trivial classification problem on which to evaluate attacks and defenses.
+CIFAR-10 contains 60,000 color images across 10 classes, with 50,000 training and 10,000 test images at $32 \times 32$ resolution with 3 color channels. This dataset is substantially harder than MNIST and requires a capable model architecture to achieve good accuracy. I chose CIFAR-10 as the primary benchmark because it provides a non-trivial classification problem on which to evaluate attacks and defenses. Figure~\ref{fig:cifar10_samples} shows one sample image from each of the ten classes.
 
-% TODO: Add figure showing sample images from datasets
-% \begin{figure}[htbp]
-%     \centering
-%     \includegraphics[width=0.8\textwidth]{figures/datasets.png}
-%     \caption{Sample images from MNIST (left) and CIFAR-10 (right) datasets.}
-%     \label{fig:datasets}
-% \end{figure}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/cifar10_samples.pdf}
+    \caption{One sample image from each of the ten CIFAR-10 classes. At $32 \times 32$ resolution the images are small, which is why an adversarial perturbation budget such as $\epsilon = 8/255$ corresponds to changes that are hard for a human to notice.}
+    \label{fig:cifar10_samples}
+\end{figure}
 
 \section{Model Architectures}
 
