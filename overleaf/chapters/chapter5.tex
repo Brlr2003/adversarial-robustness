@@ -327,9 +327,16 @@ I also note a pattern in the confidence scores. The standard model, when fooled,
 
 \subsection{Training Dynamics}
 
-For standard training, the loss decreased from approximately 1.55 to 0.034 over 50 epochs. Training accuracy reached 98\% and test accuracy settled at 94.1\%. I observed no overfitting.
+Figure~\ref{fig:training_curves} shows the training dynamics of both models over the 50 epochs, logged with MLflow. For standard training, the loss decreased from approximately 1.9 to below 0.01. Training accuracy reached 99.9\% and test accuracy settled at 94.1\%, with no sign of overfitting.
 
-Adversarial training exhibited different dynamics. The training loss remained higher throughout, which is expected since the model is trained on adversarial examples that are harder to classify. Clean test accuracy settled at 83.9\%. PGD robust accuracy, which I used for checkpoint selection, peaked at 50.6\%.
+Adversarial training exhibited different dynamics. The training loss remained much higher throughout (ending near 0.65), which is expected since the model is trained on adversarial examples that are harder to classify. Clean test accuracy rose to roughly 84\%, while PGD robust accuracy, which I used for checkpoint selection, climbed to a peak of 50.6\%. The robust model used in the rest of this chapter is the checkpoint with the highest PGD accuracy, which has 83.9\% clean accuracy.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/training_curves.pdf}
+    \caption{Training dynamics over 50 epochs. Left: training loss; the standard model's loss falls close to zero, while the adversarial model's loss stays much higher because it is trained on worst-case perturbed inputs. Right: test accuracy; the standard model reaches 94.1\% clean accuracy, the adversarially trained model settles near 84\% clean accuracy, and its PGD robust accuracy (dashed) climbs to a peak of 50.6\%. The deployed robust model is the highest-PGD checkpoint (83.9\% clean).}
+    \label{fig:training_curves}
+\end{figure}
 
 \subsection{PGD Adversarial Training on CIFAR-10}
 
