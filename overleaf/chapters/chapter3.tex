@@ -3,11 +3,11 @@
 
 \section{Introduction}
 
-This chapter describes the experimental setup. I cover the datasets, model architectures, attack formulations, defense method, and evaluation metrics.
+This chapter describes the experimental setup. It covers the datasets, model architectures, attack formulations, defense method, and evaluation metrics.
 
 \section{Research Design}
 
-I structured the work into five phases:
+The work was structured into five phases:
 
 \begin{enumerate}
     \item \textbf{Model Training:} Train baseline CNNs on the benchmark datasets and establish clean accuracy.
@@ -25,11 +25,11 @@ I structured the work into five phases:
 
 \subsection{MNIST}
 
-MNIST~\cite{lecun1998mnist} contains 70,000 grayscale images of handwritten digits (0--9), split into 60,000 training and 10,000 test images at $28 \times 28$ resolution. Standard models achieve above 99\% accuracy on this dataset. I used MNIST primarily for validating my attack implementations before moving to the more challenging CIFAR-10.
+MNIST~\cite{lecun1998mnist} contains 70,000 grayscale images of handwritten digits (0--9), split into 60,000 training and 10,000 test images at $28 \times 28$ resolution. Standard models achieve above 99\% accuracy on this dataset. MNIST was used primarily for validating the attack implementations before moving to the more challenging CIFAR-10.
 
 \subsection{CIFAR-10}
 
-CIFAR-10 contains 60,000 color images across 10 classes, with 50,000 training and 10,000 test images at $32 \times 32$ resolution with 3 color channels. This dataset is substantially harder than MNIST and requires a capable model architecture to achieve good accuracy. I chose CIFAR-10 as the primary benchmark because it provides a non-trivial classification problem on which to evaluate attacks and defenses. Figure~\ref{fig:cifar10_samples} shows one sample image from each of the ten classes.
+CIFAR-10 contains 60,000 color images across 10 classes, with 50,000 training and 10,000 test images at $32 \times 32$ resolution with 3 color channels. This dataset is substantially harder than MNIST and requires a capable model architecture to achieve good accuracy. CIFAR-10 was chosen as the primary benchmark because it provides a non-trivial classification problem on which to evaluate attacks and defenses. Figure~\ref{fig:cifar10_samples} shows one sample image from each of the ten classes.
 
 \begin{figure}[htbp]
     \centering
@@ -42,7 +42,7 @@ CIFAR-10 contains 60,000 color images across 10 classes, with 50,000 training an
 
 \subsection{MNIST Model}
 
-For MNIST I used a small CNN:
+For MNIST a small CNN was used:
 
 \begin{itemize}
     \item Conv2D (32 filters, 3$\times$3) $\rightarrow$ ReLU $\rightarrow$ Conv2D (64 filters, 3$\times$3) $\rightarrow$ ReLU
@@ -51,11 +51,11 @@ For MNIST I used a small CNN:
     \item Dense (10) $\rightarrow$ Softmax
 \end{itemize}
 
-This is a standard architecture for MNIST that achieves the accuracy needed for my purposes.
+This is a standard architecture for MNIST that achieves the accuracy needed for these purposes.
 
 \subsection{CIFAR-10 Model}
 
-For CIFAR-10 I used ResNet-18, modified for $32 \times 32$ inputs. The standard ResNet-18 architecture is designed for $224 \times 224$ images, so I made several changes to the first convolutional layer and pooling. The specific modifications are described in Chapter~\ref{ch:implementation}.
+For CIFAR-10 ResNet-18 was used, modified for $32 \times 32$ inputs. The standard ResNet-18 architecture is designed for $224 \times 224$ images, so several changes were made to the first convolutional layer and pooling. The specific modifications are described in Chapter~\ref{ch:implementation}.
 
 \section{Attack Implementations}
 
@@ -68,7 +68,7 @@ FGSM is given by Equation~\ref{eq:fgsm_method}:
     \label{eq:fgsm_method}
 \end{equation}
 
-I evaluated FGSM across multiple $\epsilon$ values. For MNIST: $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10: $\epsilon \in \{2/255, 4/255, 8/255\}$. This sweep characterizes how attack success scales with perturbation budget.
+FGSM was evaluated across multiple $\epsilon$ values. For MNIST: $\epsilon \in \{0.1, 0.2, 0.3\}$. For CIFAR-10: $\epsilon \in \{2/255, 4/255, 8/255\}$. This sweep characterizes how attack success scales with perturbation budget.
 
 \subsection{Basic Iterative Method / Projected Gradient Descent (BIM/PGD)}
 
@@ -79,7 +79,7 @@ PGD applies FGSM iteratively with a smaller step size and projects back into the
     \label{eq:pgd_method}
 \end{equation}
 
-Here $\Pi_{x,\epsilon}$ denotes projection onto the $\epsilon$-ball. I varied the following parameters:
+Here $\Pi_{x,\epsilon}$ denotes projection onto the $\epsilon$-ball. The following parameters were varied:
 \begin{itemize}
     \item Step size $\alpha$: $\epsilon/10$ or $\epsilon/4$
     \item Number of iterations: 10, 20, or 40
@@ -99,7 +99,7 @@ The Carlini--Wagner attack~\cite{carlini2017towards} casts the search for a mini
     \label{eq:cw_method}
 \end{equation}
 
-where $f$ is a margin loss that is non-positive exactly when the example is misclassified. Three components make the attack strong. The box constraint is removed by the change of variables $x + \delta = \tfrac{1}{2}(\tanh(w) + 1)$, which keeps every iterate inside $[0, 1]^n$ and lets an unconstrained optimizer (Adam) run freely over $w$. The margin loss $f(x') = \max(Z(x')_y - \max_{i \neq y} Z(x')_i,\, -\kappa)$ uses the logits $Z$ rather than the softmax output, and reaches its floor once the true class has been beaten by margin $\kappa$, so the remaining budget is spent shrinking $\|\delta\|_2$ rather than over-classifying. The constant $c$ trades the two terms against each other and is set per image by binary search. I had deferred this attack in an earlier draft on compute grounds; the change of variables together with batched optimization brings it within budget, so I implement and evaluate it on a subset of the test set. The full algorithm is described in Chapter~\ref{ch:implementation}.
+where $f$ is a margin loss that is non-positive exactly when the example is misclassified. Three components make the attack strong. The box constraint is removed by the change of variables $x + \delta = \tfrac{1}{2}(\tanh(w) + 1)$, which keeps every iterate inside $[0, 1]^n$ and lets an unconstrained optimizer (Adam) run freely over $w$. The margin loss $f(x') = \max(Z(x')_y - \max_{i \neq y} Z(x')_i,\, -\kappa)$ uses the logits $Z$ rather than the softmax output, and reaches its floor once the true class has been beaten by margin $\kappa$, so the remaining budget is spent shrinking $\|\delta\|_2$ rather than over-classifying. The constant $c$ trades the two terms against each other and is set per image by binary search. This attack had been deferred in an earlier draft on compute grounds; the change of variables together with batched optimization brings it within budget, so it is implemented and evaluated on a subset of the test set. The full algorithm is described in Chapter~\ref{ch:implementation}.
 
 \subsection{HopSkipJump}
 
@@ -111,14 +111,14 @@ The One Pixel Attack~\cite{su2019onepixel} operates under an $L_0$ rather than $
 
 \subsection{Transferability Evaluation}
 
-Adversarial examples often transfer: an example crafted against one model can fool a different model trained on the same task~\cite{papernot2017practical}. Transfer underpins the most practical black-box threat model: the attacker trains a substitute, attacks it with full white-box access, and replays the resulting examples against the victim, which is never queried during the search. I evaluate transfer directly between my two trained models. For each ordered pair (source, target) and each of FGSM, PGD, and Carlini--Wagner, I craft examples against the source model and measure the target model's accuracy on them. To keep the baseline clean I restrict the evaluation to images that both models classify correctly, so the diagonal of the resulting matrix is the ordinary white-box robust accuracy and the off-diagonal entries isolate the transfer effect. This is complementary to HopSkipJump, which is decision-based black-box on the victim itself rather than transfer-based.
+Adversarial examples often transfer: an example crafted against one model can fool a different model trained on the same task~\cite{papernot2017practical}. Transfer underpins the most practical black-box threat model: the attacker trains a substitute, attacks it with full white-box access, and replays the resulting examples against the victim, which is never queried during the search. Transfer is evaluated directly between the two trained models. For each ordered pair (source, target) and each of FGSM, PGD, and Carlini--Wagner, examples are crafted against the source model and the target model's accuracy on them is measured. To keep the baseline clean the evaluation is restricted to images that both models classify correctly, so the diagonal of the resulting matrix is the ordinary white-box robust accuracy and the off-diagonal entries isolate the transfer effect. This is complementary to HopSkipJump, which is decision-based black-box on the victim itself rather than transfer-based.
 
 
 \section{Defense: Adversarial Training}
 
 \subsection{FGSM Adversarial Training}
 
-For MNIST I used FGSM-based adversarial training following Goodfellow et al.~\cite{goodfellow2015explaining}:
+For MNIST FGSM-based adversarial training was used, following Goodfellow et al.~\cite{goodfellow2015explaining}:
 
 \begin{enumerate}
     \item Generate FGSM adversarial examples from each mini-batch
@@ -128,7 +128,7 @@ For MNIST I used FGSM-based adversarial training following Goodfellow et al.~\ci
 
 \subsection{PGD Adversarial Training}
 
-For CIFAR-10 I used PGD-based adversarial training following Madry et al.~\cite{madry2018towards}:
+For CIFAR-10 PGD-based adversarial training was used, following Madry et al.~\cite{madry2018towards}:
 
 \begin{enumerate}
     \item For each mini-batch, generate adversarial examples using multi-step PGD
@@ -140,7 +140,7 @@ The full set of hyperparameters is given in Chapter~\ref{ch:results}.
 
 \section{Evaluation Metrics}
 
-I report the following metrics for each experiment:
+The following metrics are reported for each experiment:
 
 \subsection{Accuracy Metrics}
 

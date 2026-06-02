@@ -1,0 +1,89 @@
+% Thesis Metadata
+% Fill in your personal information and thesis details here
+
+% Thesis type
+\MSc  % For Master of Science
+
+% Author information
+\author{Omar}{Alsafarti}
+\studentid{42012418}
+
+% Thesis titles
+\title{ADVERSARIAL ATTACKS ON DEEP NEURAL NETWORKS: GENERATION, EVALUATION, AND ROBUST TRAINING}
+\titleenglish{ADVERSARIAL ATTACKS ON DEEP NEURAL NETWORKS: GENERATION, EVALUATION, AND ROBUST TRAINING}
+\titlealbanian{SULMET KUNDËRSHTARE NË RRJETET NEURALE TË THELLA: GJENERIMI, VLERËSIMI DHE TRAJNIMI I QËNDRUESHËM}
+
+% Dates
+\date{June 2026}
+\dateenglish{June 2026}
+
+% Supervisor
+\supervisor{Assoc. Prof. Dr. Arban Uka}
+\supervisorenglish{Assoc. Prof. Dr. Arban Uka}
+
+% Department and Faculty
+\department{Computer Engineering}
+\departmentenglish{Computer Engineering}
+\faculty{Faculty of Architecture and Engineering}
+\facultyenglish{Faculty of Architecture and Engineering}
+
+% Head of Department (for approval page)
+\headofdepartment{Dr. Florenc Skuka} 
+
+
+% Abstract (English)
+\abstract{
+Deep learning models achieve strong performance on image classification and related tasks, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This vulnerability raises practical concerns for applications in autonomous driving, biometrics, and security.
+
+In this thesis I implement six adversarial attacks from scratch (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) and evaluate them on a ResNet-18 trained on CIFAR-10. The attacks cover white-box, decision-based black-box, and transfer-based settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$). The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$; Carlini--Wagner fools every test image with a median $L_2$ perturbation of only 0.104, and the model is also broken in the black-box setting, where HopSkipJump drives the median $L_2$ perturbation to 0.36 within a 2{,}500-query budget. I then apply PGD-based adversarial training, which produces a model that retains 45.1\% accuracy under PGD at the cost of 10.2 percentage points of clean accuracy, and that requires roughly $7\times$ the $L_2$ perturbation under Carlini--Wagner and $5.8\times$ under HopSkipJump. The robustness gain transfers partially to the One Pixel ($L_0$) attack as well, and adversarial examples crafted on the standard model fail to transfer to the robust one, which rules out gradient masking as the source of its robustness. The results demonstrate both the severity of adversarial vulnerability across multiple threat models and the effectiveness of adversarial training as a defense.
+}
+
+% Keywords (English)
+\keywordsenglish{Adversarial Robustness, Deep Neural Networks, Adversarial Training, White-Box Attacks, Black-Box Attacks}
+
+% Abstrakt (Albanian)
+\abstrakt{
+Modelet e mësimit të thellë (Deep Learning) arrijnë performancë të jashtëzakonshme në detyra si klasifikimi i imazheve, megjithatë ato janë të njohura për cenueshmërinë ndaj shembujve kundërshtarë (Adversarial Examples), hyrje që janë ndryshuar me ndryshime të vogla, shpesh të padukshme, të cilat shkaktojnë klasifikim të gabuar me besueshmëri të lartë. Kjo cenueshmëri ngre shqetësime serioze për sigurinë e sistemeve të përdorura në drejtimin autonom, biometrikë dhe sigurinë kibernetike.
+
+Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër modeleve të klasifikimit të imazheve. Një rrjet nervor konvolucionar (Convolutional Neural Network) ResNet-18 trajnohet në grupin e të dhënave CIFAR-10 dhe gjashtë sulme implementohen dhe krahasohen: katër sulme white-box (FGSM, PGD, DeepFool, Carlini--Wagner) dhe dy sulme black-box (HopSkipJump, One Pixel), duke mbuluar modelet kërcënuese $L_\infty$, $L_2$ dhe $L_0$. Modeli standard arrin saktësi 94.1\% në të dhëna të pastra por bie në 1.2\% nën sulmin PGD me 20 hapa; sulmi Carlini--Wagner mashtron çdo imazh testimi me një perturbim mesatar $L_2$ prej vetëm 0.104, dhe modeli çahet gjithashtu në sulmet black-box. Trajnimi kundërshtar (Adversarial Training) i bazuar në PGD aplikohet më pas, duke prodhuar një model të qëndrueshëm që ruan 45.1\% saktësi nën PGD dhe rrit koston e perturbimit $L_2$ me afërsisht $7\times$ nën Carlini--Wagner dhe $5.8\times$ nën HopSkipJump, me koston e një rënieje prej 10.2 pikësh përqindjeje në saktësinë e pastër. Përveç kësaj, shembujt kundërshtarë të krijuar kundër modelit standard nuk transferohen te modeli i qëndrueshëm, gjë që përjashton maskimin e gradientit (gradient masking) si burim të qëndrueshmërisë së tij. Këto rezultate konfirmojnë ashpërsinë e cenueshmërisë kundërshtare në modele të ndryshme kërcënuese dhe vërtetojnë trajnimin kundërshtar si një mekanizëm mbrojtës efektiv.
+}
+
+% Keywords (Albanian)
+\keywords{Qëndrueshmëri Kundërshtare, Rrjete Neurale të Thella, Trajnim Kundërshtar, Sulme White-Box, Sulme Black-Box}
+
+% Acknowledgments
+\acknowledgments{
+I would like to thank my supervisor, Assoc. Prof. Dr. Arban Uka, for his guidance throughout this work. His input shaped both the direction of the research and the way I approached the problems. Many of the ideas in this thesis came out of our discussions, and I am grateful for the time he invested.
+
+I also thank my family for their support and patience during my studies. Finally, I thank Epoka University for providing the opportunity and resources that made this research possible.
+}
+
+% Dedication (optional - uncomment if needed)
+% \dedication{
+%     To my family...
+% }
+
+% Abbreviations
+\abbreviations{
+\begin{tabular}{ll}
+AE & Adversarial Example \\
+BIM & Basic Iterative Method \\
+C\&W & Carlini-Wagner Attack \\
+CNN & Convolutional Neural Network \\
+DE & Differential Evolution \\
+DNN & Deep Neural Network \\
+FGSM & Fast Gradient Sign Method \\
+GPU & Graphics Processing Unit \\
+HSJ & HopSkipJump (Attack) \\
+MPS & Metal Performance Shaders \\
+PGD & Projected Gradient Descent \\
+PGD-AT & PGD-based Adversarial Training \\
+ResNet & Residual Network \\
+SGD & Stochastic Gradient Descent \\
+UAP & Universal Adversarial Perturbation \\
+\end{tabular}
+}
+
+% Optional: Disable table or figure lists if not needed
+% \NoTableList
+% \NoFigureList

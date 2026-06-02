@@ -3,7 +3,7 @@
 
 \section{Introduction}
 
-In this chapter I review the existing literature on adversarial examples for deep neural networks. I cover the theoretical foundations, the main attack methods, and the proposed defenses.
+This chapter reviews the existing literature on adversarial examples for deep neural networks. The theoretical foundations, the main attack methods, and the proposed defenses are covered.
 
 \section{Theoretical Background}
 
@@ -25,7 +25,7 @@ Adversarial attacks are typically categorized along three axes:
     \item \textbf{Perturbation constraint.} The perturbation is typically bounded under an $L_p$ norm. $L_\infty$ bounds the maximum change per pixel, $L_2$ bounds the Euclidean distance, and $L_0$ bounds the number of modified pixels.
 \end{itemize}
 
-I refer the reader to Yuan et al.~\cite{yuan2019adversarial} and Ren et al.~\cite{ren2020adversarial} for thorough surveys of threat models.
+Yuan et al.~\cite{yuan2019adversarial} and Ren et al.~\cite{ren2020adversarial} provide thorough surveys of threat models.
 
 \section{Related Work}
 
@@ -131,23 +131,23 @@ Several other defense strategies have been explored:
     \item \textbf{Randomized smoothing:} Classifying by majority vote over noisy copies of the input, which yields certifiable robustness in a probabilistic sense.
 \end{itemize}
 
-I refer the reader to the surveys by Ren et al.~\cite{ren2020adversarial}, Chakraborty et al.~\cite{chakraborty2018survey}, Zhou et al.~\cite{zhou2022adversarial}, and Macas et al.~\cite{macas2024adversarial} for further detail.
+Further detail is available in the surveys by Ren et al.~\cite{ren2020adversarial}, Chakraborty et al.~\cite{chakraborty2018survey}, Zhou et al.~\cite{zhou2022adversarial}, and Macas et al.~\cite{macas2024adversarial}.
 
 \section{Research Gap}
 
-I identify several gaps in the existing literature:
+Several gaps can be identified in the existing literature:
 
 \begin{enumerate}
-    \item Most works focus on a single attack or a single defense. I found it difficult to locate a study that compares attacks as different as FGSM, PGD, DeepFool, Carlini--Wagner, and decision-based black-box methods on the same model under the same evaluation protocol. Different papers use different configurations, which makes cross-paper comparison unreliable.
+    \item Most works focus on a single attack or a single defense. A study that compares attacks as different as FGSM, PGD, DeepFool, Carlini--Wagner, and decision-based black-box methods on the same model under the same evaluation protocol is difficult to locate. Different papers use different configurations, which makes cross-paper comparison unreliable.
 
     \item The accuracy--robustness trade-off is hard to assess from the literature because experimental setups vary: different $\epsilon$ values, different numbers of PGD steps, different architectures. It is often unclear whether differences in reported numbers come from the method or the setup.
 
-    \item Implementation details are frequently underspecified. Papers report hyperparameters but omit details that matter in practice. An example is the handling of batch normalization during adversarial training, which I found to have a substantial effect on the final model.
+    \item Implementation details are frequently underspecified. Papers report hyperparameters but omit details that matter in practice. An example is the handling of batch normalization during adversarial training, which was found to have a substantial effect on the final model.
 \end{enumerate}
 
 This thesis addresses these gaps by providing a single study with a unified codebase, consistent evaluation, and sufficient implementation detail for reproducibility.
 
 \section{Summary}
 
-The literature indicates that adversarial vulnerability is a fundamental property of current deep learning models rather than an artifact that can be patched. Attacks range from single-step methods (FGSM) to full optimization procedures (C\&W), and the realistic black-box setting is covered by transfer, score-based, and decision-based attacks such as HopSkipJump and by sparse attacks such as One Pixel. On the defense side, adversarial training~\cite{madry2018towards} remains the most reliable approach, despite its cost in training time and clean accuracy. The remainder of this thesis builds on these foundations with my own implementations and experiments.
+The literature indicates that adversarial vulnerability is a fundamental property of current deep learning models rather than an artifact that can be patched. Attacks range from single-step methods (FGSM) to full optimization procedures (C\&W), and the realistic black-box setting is covered by transfer, score-based, and decision-based attacks such as HopSkipJump and by sparse attacks such as One Pixel. On the defense side, adversarial training~\cite{madry2018towards} remains the most reliable approach, despite its cost in training time and clean accuracy. The remainder of this thesis builds on these foundations with the implementations and experiments developed here.
 

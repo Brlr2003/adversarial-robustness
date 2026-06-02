@@ -35,11 +35,11 @@
 \abstract{
 Deep learning models achieve strong performance on image classification and related tasks, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This vulnerability raises practical concerns for applications in autonomous driving, biometrics, and security.
 
-In this thesis I implement six adversarial attacks from scratch (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) and evaluate them on a ResNet-18 trained on CIFAR-10. The attacks cover white-box, decision-based black-box, and transfer-based settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$). The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$; Carlini--Wagner fools every test image with a median $L_2$ perturbation of only 0.104, and the model is also broken in the black-box setting, where HopSkipJump drives the median $L_2$ perturbation to 0.36 within a 2{,}500-query budget. I then apply PGD-based adversarial training, which produces a model that retains 45.1\% accuracy under PGD at the cost of 10.2 percentage points of clean accuracy, and that requires roughly $7\times$ the $L_2$ perturbation under Carlini--Wagner and $5.8\times$ under HopSkipJump. The robustness gain transfers partially to the One Pixel ($L_0$) attack as well, and adversarial examples crafted on the standard model fail to transfer to the robust one, which rules out gradient masking as the source of its robustness. The results demonstrate both the severity of adversarial vulnerability across multiple threat models and the effectiveness of adversarial training as a defense.
+In this thesis six adversarial attacks are implemented from scratch (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) and evaluated on a ResNet-18 trained on CIFAR-10. The attacks cover white-box, decision-based black-box, and transfer-based settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$). The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$; Carlini--Wagner fools every test image with a median $L_2$ perturbation of only 0.104, and the model is also broken in the black-box setting, where HopSkipJump drives the median $L_2$ perturbation to 0.36 within a 2{,}500-query budget. PGD-based adversarial training is then applied, which produces a model that retains 45.1\% accuracy under PGD at the cost of 10.2 percentage points of clean accuracy, and that requires roughly $7\times$ the $L_2$ perturbation under Carlini--Wagner and $5.8\times$ under HopSkipJump. The robustness gain transfers partially to the One Pixel ($L_0$) attack as well, and adversarial examples crafted on the standard model fail to transfer to the robust one, which rules out gradient masking as the source of its robustness. The results demonstrate both the severity of adversarial vulnerability across multiple threat models and the effectiveness of adversarial training as a defense.
 }
 
 % Keywords (English)
-\keywordsenglish{Adversarial Examples, Deep Neural Networks, Adversarial Training, Robustness, Black-Box Attacks, Transferability, PGD, Carlini-Wagner}
+\keywordsenglish{Adversarial Robustness, Deep Neural Networks, Adversarial Training, White-Box Attacks, Black-Box Attacks}
 
 % Abstrakt (Albanian)
 \abstrakt{
@@ -49,7 +49,7 @@ Kjo tezë fokusohet në studimin praktik të sulmeve kundërshtare kundër model
 }
 
 % Keywords (Albanian)
-\keywords{Shembuj Kundërshtarë, Rrjete Neurale të Thella, Trajnim Kundërshtar, Qëndrueshmëri, Sulme Black-Box, Transferueshmëria, PGD, Carlini-Wagner}
+\keywords{Qëndrueshmëri Kundërshtare, Rrjete Neurale të Thella, Trajnim Kundërshtar, Sulme White-Box, Sulme Black-Box}
 
 % Acknowledgments
 \acknowledgments{

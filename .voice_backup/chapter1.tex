@@ -1,0 +1,59 @@
+\chapter{INTRODUCTION}
+\label{ch:introduction}
+
+\section{Introduction}
+
+Deep neural networks achieve high accuracy on image classification, speech recognition, and natural language tasks. At the same time, these models are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification~\cite{szegedy2014intriguing,goodfellow2015explaining}. This vulnerability is not restricted to the digital domain. Kurakin et al.~\cite{kurakin2016adversarialphysical} demonstrated that adversarial perturbations survive printing and recapture by a camera, and similar attacks have been shown to work on physical road signs. Given the deployment of deep learning in autonomous driving, medical imaging, and security systems, understanding and addressing this vulnerability is a practical concern~\cite{yuan2019adversarial,ren2020adversarial,chakraborty2018survey,zhou2022adversarial,macas2024adversarial}.
+
+\section{Background and Motivation}
+
+Szegedy et al.~\cite{szegedy2014intriguing} were the first to show that well-trained neural networks can be fooled by perturbations that are nearly invisible to humans. Goodfellow et al.~\cite{goodfellow2015explaining} offered an explanation rooted in the linear behavior of neural networks in high-dimensional input spaces: a small perturbation aligned with the gradient of the loss, applied across many dimensions, accumulates into a large change in the network's output. They introduced FGSM, a single-step attack that produces adversarial examples with one gradient computation. The simplicity and effectiveness of FGSM made it clear that adversarial vulnerability is not an edge case but a systematic property of these models.
+
+I chose this topic because I wanted to move beyond theoretical discussion and actually measure how fragile standard models are, what adversarial training costs, and how different attacks compare when evaluated under identical conditions. Implementing the attacks from scratch, rather than relying on existing libraries, was a deliberate choice. It forced me to confront the implementation details that papers often leave out.
+
+\section{Problem Statement}
+
+I study convolutional neural networks trained on MNIST and CIFAR-10 for image classification. The thesis addresses four questions:
+
+\begin{enumerate}
+    \item How effective are common white-box attacks (FGSM, BIM/PGD, DeepFool, Carlini--Wagner) against standard models, and how does effectiveness scale with perturbation budget?
+    \item Does the picture change in the black-box setting, where the attacker has no gradient access? I use HopSkipJump (decision-based) and One Pixel ($L_0$), together with a transfer-based study between the two models, to test this.
+    \item Does PGD-based adversarial training yield meaningful robustness, and what is the cost in clean accuracy? Does the gain transfer across threat models, including ones the training procedure was not designed against?
+    \item How do the six attacks compare in terms of attack success rate, perturbation magnitude, and computational cost?
+\end{enumerate}
+
+I restrict the scope to evasion attacks at test time in the image classification setting.
+
+\section{Research Objectives}
+
+I observe that much of the existing work either remains theoretical or relies on adversarial ML libraries without investigating the underlying mechanics. To this end, I set the following objectives:
+
+\begin{itemize}
+    \item Implement FGSM, BIM/PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel from scratch in PyTorch and evaluate them on MNIST and CIFAR-10.
+    \item Evaluate at multiple perturbation budgets to characterize how accuracy degrades as $\epsilon$ increases, and at multiple query budgets for the decision-based attack.
+    \item Apply PGD-based adversarial training and measure the resulting trade-off between robustness and clean accuracy across white-box and black-box threat models.
+    \item Compare all six attacks under identical conditions (same model, same data, same evaluation protocol) spanning $L_\infty$, $L_2$, and $L_0$ threat models.
+\end{itemize}
+
+\section{Contributions}
+
+The contributions of this thesis are as follows:
+
+\begin{enumerate}
+    \item I provide a controlled comparison of six adversarial attacks (spanning white-box, decision-based black-box, and transfer-based settings) on the same model with the same evaluation setup. This addresses the difficulty of comparing results across papers that use different configurations.
+    \item I report the accuracy--robustness trade-off from PGD adversarial training with sufficient detail for reproducibility.
+    \item I release an open-source framework containing all attack implementations, training scripts, evaluation code, and an interactive web demo.
+\end{enumerate}
+
+\section{Thesis Organization}
+
+\textbf{Chapter 2} reviews the literature on adversarial examples, attacks, and defenses.
+
+\textbf{Chapter 3} presents the methodology: datasets, models, attack formulations, defense setup, and evaluation metrics.
+
+\textbf{Chapter 4} describes the implementation, including code architecture, engineering decisions, and development tools.
+
+\textbf{Chapter 5} reports the experimental results and analysis.
+
+\textbf{Chapter 6} gives conclusions and directions for future work.
+

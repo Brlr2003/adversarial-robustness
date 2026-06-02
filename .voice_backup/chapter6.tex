@@ -1,0 +1,84 @@
+\chapter{CONCLUSION AND FUTURE WORK}
+\label{ch:conclusion}
+
+\section{Conclusion}
+
+I set out to study how vulnerable deep neural networks are to adversarial attacks and whether adversarial training provides an effective defense. I implemented six attacks (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) from scratch, evaluated them on a ResNet-18 trained on CIFAR-10, ran a transfer-based study between my two models, and applied PGD-based adversarial training. The six attacks span both white-box and black-box settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$).
+
+Standard models are extremely vulnerable. My ResNet-18 achieves 94.1\% clean accuracy, but a 20-step PGD attack at $\epsilon = 8/255$ reduces this to 1.2\%. The perturbation is imperceptible. Carlini--Wagner, the strongest $L_2$ attack I tested, fools every correctly classified image with a median perturbation of only $L_2 = 0.104$. Evaluating with FGSM alone (18.3\% robust accuracy) gives a misleading picture. The gap between FGSM and PGD illustrates why multi-step attacks are necessary for reliable evaluation.
+
+Adversarial training brings PGD robust accuracy from 1.2\% to 45.1\%, at a cost of 10.2 percentage points of clean accuracy (94.1\% to 83.9\%). The same model forces every $L_2$ and decision-based attack to spend several times more perturbation, resists adversarial examples transferred from the standard model, and is harder to break with a single pixel, so its robustness is not specific to the attack it was trained against. Whether this trade-off is acceptable depends on the application. For safety-critical systems, it is clearly preferable to have a model that degrades gracefully under attack.
+
+I also observe that the adversarially trained model exhibits better confidence calibration. The standard model assigns near-100\% confidence to incorrect predictions under attack. The adversarially trained model produces more reasonable confidence scores, which may be valuable on its own for applications that need to detect unreliable predictions.
+
+\section{Research Contributions}
+
+The contributions of this thesis are:
+
+\begin{enumerate}
+    \item \textbf{White-box attack comparison.} I evaluate FGSM, PGD, DeepFool, and Carlini--Wagner on the same model with the same evaluation protocol. PGD is the strongest $L_\infty$ attack (1.2\% surviving accuracy) and FGSM the weakest (18.3\%); on the $L_2$ axis, Carlini--Wagner finds the smallest perturbations, beating DeepFool, and is the standard against which the adversarially trained model should be measured.
+
+    \item \textbf{Black-box, transfer, and $L_0$ evaluation.} I implement HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$, gradient-free), and run a transfer-based study between the two models, to test whether the white-box conclusions hold against attackers with weaker assumptions. The standard model is broken in the decision-based and $L_0$ settings; the adversarially trained model is more resistant in both, even though PGD adversarial training was not designed against either threat model. The transfer study shows that adversarial examples crafted on the standard model largely fail to fool the robust model, ruling out gradient masking as the source of its robustness.
+
+    \item \textbf{Adversarial training evaluation.} I report 45.1\% PGD robust accuracy and 83.9\% clean accuracy, consistent with the results of Madry et al.~\cite{madry2018towards}. The robustness gain partially transfers to black-box and $L_0$ attacks, suggesting that PGD-AT regularises the decision boundary in ways that go beyond the trained threat model.
+
+    \item \textbf{Open-source code.} I release the full codebase on GitHub, including all attack implementations, training scripts, evaluation code, and an interactive demo on HuggingFace Spaces. The modular design allows new attacks to be added by writing a single file.
+
+    \item \textbf{Confidence calibration.} I observe that the adversarially trained model produces better-calibrated confidence scores. The standard model outputs 99\% confidence on incorrect predictions; the adversarially trained model outputs approximately 55\% on correct ones.
+\end{enumerate}
+
+\section{Limitations}
+
+I acknowledge the following limitations:
+
+\begin{enumerate}
+    \item \textbf{CIFAR-10 only.} My experiments use $32 \times 32$ images with 10 classes. The perceptual meaning of $\epsilon = 8/255$ differs at higher resolutions. I cannot claim these results generalize to ImageNet without running those experiments.
+
+    \item \textbf{ResNet-18 only.} I tested a single architecture. Other architectures, such as Vision Transformers, may exhibit different robustness properties.
+
+    \item \textbf{Black-box and $L_0$ on subsets only.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than gradient-based attacks. I evaluated them on subsets (\HSJN{} and \OPN{} images respectively) rather than the full test set. Carlini--Wagner is batched and runs on a larger subset, but still not the full test set. Larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative conclusions.
+
+    \item \textbf{Single defense.} I evaluated only PGD adversarial training. Certified defenses, randomized smoothing, and input preprocessing are also worth investigating.
+
+    \item \textbf{Hardware constraints.} Training on an Apple M4 Pro limited my ability to run extensive hyperparameter searches. Adversarial training on CIFAR-10 alone took 4.5 hours.
+\end{enumerate}
+
+\section{Future Work}
+\label{sec:future_work}
+
+I identify several directions for future work.
+
+\subsection{Short-term}
+
+The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chapter~\ref{ch:results} close the most obvious gap in earlier drafts of this thesis: every attack used to be white-box and $L_\infty$. The evaluation now spans $L_\infty$, $L_2$, and $L_0$, and white-box, decision-based, and transfer-based settings. The remaining short-term extensions are:
+
+\begin{itemize}
+    \item \textbf{Additional PGD restarts.} Using a single random restart gives a lower bound on vulnerability. Running PGD with 5--10 restarts would tighten this bound and is essentially free to add.
+
+    \item \textbf{Larger black-box evaluations.} The current HopSkipJump and One Pixel evaluations use \HSJN{} and \OPN{} images respectively; running on the full test set would tighten the standard error on the reported numbers, although the qualitative conclusions are unlikely to change.
+
+    \item \textbf{Stronger Carlini--Wagner settings.} I run C\&W with a fixed number of binary-search steps and Adam iterations on a subset. More search steps and a higher iteration budget on the full test set would further tighten the reported $L_2$ distances, particularly for the adversarially trained model.
+\end{itemize}
+
+\subsection{Long-term}
+
+\begin{itemize}
+    \item \textbf{ImageNet-scale experiments.} Larger images, more classes, and larger models would test whether my findings generalize. The natural starting point for the black-box side of that extension is NbuGAN~\cite{topal2026nbugan}, which combines a generator network with the Noise Blowing-Up technique and reports $93.3\%$ targeted success on native-resolution ImageNet at $\approx 55$ seconds per image, faster than every decision-based black-box attack I tested at CIFAR-10 scale, including HopSkipJump.
+
+    \item \textbf{Certified defenses.} Randomized smoothing provides formal robustness guarantees and would complement the empirical approach taken here.
+
+    \item \textbf{Domain-specific evaluation.} CIFAR-10 is suitable for benchmarking, but the practical applications are in medical imaging and autonomous driving. Evaluating on domain-specific data (e.g., X-ray images, traffic signs) is a natural next step.
+
+    \item \textbf{Architecture comparison.} The relative robustness of Vision Transformers versus CNNs is an open question. The framework built for this thesis could be extended to study this.
+
+    \item \textbf{Hopfield-augmented architectures.} Hopfield networks settle an input onto stored attractor states, which makes them comparatively insensitive to input noise. A natural question is whether embedding Hopfield-style associative memory inside a ResNet-18, for example by replacing some of its later layers with a modern Hopfield layer, raises the perturbation an attacker needs to succeed. The experiment would compare the hybrid against the standard and adversarially trained ResNet-18 under the same six attacks, and test whether the attractor dynamics resist the gradient-based and decision-based attacks that break the standard model in this thesis. A finer version of the question is to identify the inputs where the Hopfield component changes the prediction that the plain ResNet-18 would have made, which would localise what the associative memory contributes to robustness.
+
+    \item \textbf{Efficient adversarial training.} Methods such as Adversarial Training for Free~\cite{shafahi2019adversarialfree} reduce the computational cost of adversarial training and would make it feasible to run on larger-scale problems.
+
+    \item \textbf{Thermal adversarial attacks.} Adversarial perturbations on thermal/infrared imagery are a natural extension to the visible-light setting studied here. The threat model is relevant to autonomous driving in low-light conditions and to military and security applications. The main obstacle is data: standard CIFAR-10-style benchmarks do not exist for thermal imaging at comparable scale, and a meaningful evaluation would require curating a thermal dataset or adapting an existing one such as FLIR ADAS.
+\end{itemize}
+
+\section{Final Remarks}
+
+Adversarial vulnerability is one of the main open problems in deploying deep learning systems. My experiments demonstrate both the severity of the problem (a 94.1\%-accurate model reduced to 1.2\% by an imperceptible white-box perturbation, and broken with a few hundred queries by an attacker who only sees predicted labels) and the effectiveness of adversarial training as a defense across multiple threat models, despite its cost. As deep learning is deployed in settings where errors have real consequences, addressing adversarial robustness becomes increasingly important. I hope that the code, results, and demo from this thesis are useful to others working in this area.
+

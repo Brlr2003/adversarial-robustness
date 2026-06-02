@@ -1,0 +1,232 @@
+\chapter{IMPLEMENTATION}
+\label{ch:implementation}
+
+\section{Introduction}
+
+This chapter describes the implementation of the experimental framework. All code is written in PyTorch. I implemented FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel from scratch without relying on external adversarial ML libraries, wrote training loops for both standard and adversarial training, and built a Streamlit web application deployed on HuggingFace Spaces for interactive demonstration. I used MLflow for experiment tracking throughout.
+
+\section{System Architecture}
+
+I organized the codebase into five modules. The \textbf{Model Module} contains the CIFAR-10 ResNet-18. The \textbf{Attack Module} contains all six attack implementations with a common interface, allowing them to be used interchangeably. The \textbf{Training Module} implements standard and adversarial training with MLflow logging. The \textbf{Evaluation Module} computes robustness metrics. The \textbf{Frontend Module} provides the Streamlit demo interface.
+
+I designed the system to be modular: adding a new attack requires writing a single file that conforms to the common attack interface. No changes to the rest of the codebase are needed.
+
+\section{Implementation Details}
+
+\subsection{Model Implementation}
+
+I used ResNet-18~\cite{he2016deep}, modified for CIFAR-10. The original architecture was designed for $224 \times 224$ ImageNet images. The first layer is a $7 \times 7$ convolution with stride 2 followed by max pooling, which reduces spatial dimensions too aggressively for $32 \times 32$ inputs. By the time the residual blocks are reached, most spatial information is lost. I replaced this with a $3 \times 3$ convolution with stride 1 and padding 1, and removed the max pooling layer. This modification is standard for CIFAR-scale experiments.
+
+The rest of the architecture follows standard ResNet-18: four residual layers with two BasicBlocks each (two $3 \times 3$ convolutions with batch normalization and ReLU per block, plus a shortcut connection). Layers 2--4 downsample using stride-2 convolutions, with $1 \times 1$ convolutions on the shortcut when dimensions change. Channel widths are 64, 128, 256, 512. Adaptive average pooling reduces the final 512-channel feature maps to $1 \times 1$, producing a 512-dimensional feature vector that a single linear layer maps to the 10 class logits. This 512-dimensional vector is the representation the network extracts for each image, and it is the feature on which the Hopfield defense in Chapter~\ref{ch:results} operates. The model has approximately 11.17 million parameters, which at 32-bit precision is about 44.7~MB; the standard and adversarially trained models are the same size, as they share this architecture. Kaiming normal initialization was used for the convolutions and constant initialization for the batch normalization parameters.
+
+The inputs were deliberately left unnormalized (no mean subtraction or standard deviation scaling). The reason is that adversarial perturbation budgets are defined in pixel space. An 8-bit image stores each colour channel as an integer in $\{0, 1, \dots, 255\}$, so there are 256 distinct levels but the largest value is 255; mapping to $[0, 1]$ divides by this maximum, sending 255 to $1.0$. A budget of $\epsilon = 8/255 \approx 0.031$ is therefore 8 intensity levels out of that range, and it is written $8/255$ rather than $8/256$ because the denominator is the maximum pixel value, not the number of levels. If the inputs are normalized this interpretation no longer holds, and the $\epsilon$ budget would need to be rescaled accordingly. Keeping inputs in $[0, 1]$ is consistent with the adversarial robustness literature, including Madry et al.~\cite{madry2018towards}.
+
+\subsection{Data Loading and Preprocessing}
+
+I loaded CIFAR-10 through torchvision. Training augmentation consisted of random crop with 4-pixel padding and random horizontal flip, followed by conversion to tensor. The test set used only tensor conversion. I used a batch size of 128, four DataLoader workers, and pinned memory for GPU transfers.
+
+\subsection{FGSM Attack Implementation}
+
+My FGSM implementation follows Goodfellow et al.~\cite{goodfellow2015explaining}. The procedure is given in Algorithm~\ref{alg:fgsm}.
+
+\begin{algorithm}[htbp]
+\caption{Fast Gradient Sign Method (FGSM)}
+\label{alg:fgsm}
+\begin{algorithmic}[1]
+\REQUIRE Input image $x$, true label $y$, model $f_\theta$, perturbation budget $\epsilon$
+\ENSURE Adversarial example $x^{adv}$
+\STATE Compute loss: $L = J(\theta, x, y)$
+\STATE Compute gradient: $g = \nabla_x L$
+\STATE Compute perturbation: $\delta = \epsilon \cdot \text{sign}(g)$
+\STATE Generate adversarial example: $x^{adv} = \text{clip}(x + \delta, 0, 1)$
+\RETURN $x^{adv}$
+\end{algorithmic}
+\end{algorithm}
+
+In PyTorch, this amounts to enabling gradients on the input tensor, performing a forward pass, computing cross-entropy loss, calling \texttt{backward()}, taking the sign of the input gradient, scaling by $\epsilon$, and clamping to $[0, 1]$. The attack operates on full batches and is fast.
+
+\subsection{PGD Attack Implementation}
+
+PGD is iterated FGSM with projection and random initialization. The procedure is given in Algorithm~\ref{alg:pgd}.
+
+\begin{algorithm}[htbp]
+\caption{Projected Gradient Descent (PGD) Attack}
+\label{alg:pgd}
+\begin{algorithmic}[1]
+\REQUIRE Input $x$, label $y$, model $f_\theta$, budget $\epsilon$, step size $\alpha$, iterations $T$
+\ENSURE Adversarial example $x^{adv}$
+\STATE Initialize: $x^{adv}_0 = x + \text{Uniform}(-\epsilon, \epsilon)$ \COMMENT{Random start}
+\FOR{$t = 0$ to $T-1$}
+    \STATE Compute loss: $L = J(\theta, x^{adv}_t, y)$
+    \STATE Compute gradient: $g = \nabla_x L$
+    \STATE Update: $x^{adv}_{t+1} = x^{adv}_t + \alpha \cdot \text{sign}(g)$
+    \STATE Project: $x^{adv}_{t+1} = \Pi_{x,\epsilon}(x^{adv}_{t+1})$ \COMMENT{Project to $\epsilon$-ball}
+    \STATE Clip: $x^{adv}_{t+1} = \text{clip}(x^{adv}_{t+1}, 0, 1)$
+\ENDFOR
+\RETURN $x^{adv}_T$
+\end{algorithmic}
+\end{algorithm}
+
+The initialization samples uniformly from the $\epsilon$-ball around the clean input. At each step I compute the gradient, take a step of size $\alpha$ in the sign direction, project back into the $L_\infty$ $\epsilon$-ball by clamping $x^{adv} - x$ to $[-\epsilon, \epsilon]$, and clamp pixel values to $[0, 1]$.
+
+I note an implementation detail that caused me difficulty: the adversarial image must be detached from the computation graph (via \texttt{.detach()}) after each iteration. Without this, PyTorch retains the computation graph from every iteration, and memory usage grows linearly with the number of steps. With 20 PGD steps on ResNet-18 this fills the 24 GB of unified memory well before the batch completes, at which point the process is killed.
+
+\subsection{DeepFool Implementation}
+
+DeepFool~\cite{moosavidezfooli2016deepfool} finds the minimum perturbation that changes the model's prediction. It does this by linearizing the classifier at each step and computing the distance to the nearest decision boundary.
+
+The algorithm processes images one at a time. For each image, at each iteration, it computes the gradient of every class logit with respect to the input. For each class $k \neq \hat{k}$ (where $\hat{k}$ is the current prediction), it computes:
+
+\begin{equation}
+    d_k = \frac{|f_k(x) - f_{\hat{k}}(x)|}{\|w_k\|_2}
+\end{equation}
+
+where $w_k = \nabla_x f_k(x) - \nabla_x f_{\hat{k}}(x)$. The class with the smallest $d_k$ is selected, and the corresponding minimal perturbation is applied. This repeats until the prediction changes or the iteration limit is reached (50 in my experiments). I multiply the final perturbation by $1.02$ (the ``overshoot'' parameter) to ensure the input crosses the decision boundary rather than landing exactly on it.
+
+The per-image processing makes DeepFool substantially slower than FGSM or PGD. However, it provides information that the other attacks do not: the actual distance from each input to the nearest decision boundary.
+
+\subsection{Carlini--Wagner Implementation}
+
+The Carlini--Wagner $L_2$ attack~\cite{carlini2017towards} also seeks a minimal perturbation, but solves a single optimization problem rather than DeepFool's greedy linearization, which makes it stronger at the cost of more iterations. The procedure is given in Algorithm~\ref{alg:cw}.
+
+\begin{algorithm}[htbp]
+\caption{Carlini--Wagner $L_2$ Attack}
+\label{alg:cw}
+\begin{algorithmic}[1]
+\REQUIRE Input $x$, label $y$, model $f_\theta$ with logits $Z$, confidence $\kappa$, search steps $S$, iterations $T$
+\ENSURE Adversarial example $x^{adv}$ with minimal $L_2$
+\STATE Map to tanh space: $w \gets \text{arctanh}(2x - 1)$
+\STATE Initialize $c$, bounds $[c_{lo}, c_{hi}] \gets [0, \infty]$, best $x^{adv} \gets x$
+\FOR{$s = 1$ to $S$}
+    \FOR{$t = 1$ to $T$}
+        \STATE $x' \gets \tfrac{1}{2}(\tanh(w) + 1)$
+        \STATE $f \gets \max\!\left(Z(x')_y - \max_{i \neq y} Z(x')_i,\ -\kappa\right)$
+        \STATE $\mathcal{L} \gets \|x' - x\|_2^2 + c \cdot f$
+        \STATE Update $w$ with one Adam step on $\nabla_w \mathcal{L}$
+        \IF{$x'$ is misclassified and $\|x' - x\|_2$ is the smallest seen}
+            \STATE $x^{adv} \gets x'$
+        \ENDIF
+    \ENDFOR
+    \STATE Binary search on $c$: shrink it if a solution was found this step, else grow it
+\ENDFOR
+\RETURN $x^{adv}$
+\end{algorithmic}
+\end{algorithm}
+
+My implementation runs on full batches. The optimization variable is $w$, initialized to $\text{arctanh}(2x - 1)$ (clamped to keep the inverse finite); the adversarial image is recovered as $x' = \tfrac{1}{2}(\tanh(w) + 1)$ at every step, which guarantees $x' \in [0, 1]$ without any clipping. The margin loss is computed from the logits rather than the softmax output: I read off the true-class logit and the largest competing logit (masking the true class with a large negative constant), and clamp their difference at $-\kappa$. The objective $\|x' - x\|_2^2 + c\,f(x')$ is minimized with Adam at learning rate $0.01$. The constant $c$ is set by binary search: after each of the $S$ search steps I shrink $c$ for the images that were successfully attacked, to push for a smaller perturbation, and grow it for the rest, doubling it whenever no upper bound has been established. Across all search steps I keep, per image, the misclassified adversarial example with the smallest $L_2$, so the returned perturbation is the best found rather than the last one. I used $S = 8$ binary-search steps and $T = 200$ Adam iterations per step, with an early-abort check that ends a step once the loss stops improving. Because C\&W is fully batched and runs on the GPU, it is far cheaper per image than DeepFool or the black-box attacks, so I evaluate it on a larger subset. The implementation is about 120 lines and lives in \texttt{src/attacks/cw.py}.
+
+\subsection{HopSkipJump Implementation}
+
+HopSkipJump~\cite{chen2020hopskipjump} is a decision-based black-box attack: every query returns only the predicted label, never logits or gradients. The implementation has three nested operations.
+
+\textit{Initialisation.} For each clean image, draw uniform random images from $[0, 1]^{C \times H \times W}$ and accept the first one that the model classifies differently from the true label. This produces a (typically far-from-clean) starting adversarial point.
+
+\textit{Boundary projection.} Given a clean image $x$ and an adversarial point $x'$, binary search along the segment between them in the chosen norm ($L_2$ for the experiments in this thesis) until the perturbation magnitude can no longer be reduced without losing the misclassification. Each binary-search step is a single label query.
+
+\textit{Gradient direction estimation.} At a boundary point, sample $N$ random directions $u_1, \dots, u_N$, query the model on $x_{\text{bd}} + \delta u_i$, and form the estimate
+\begin{equation}
+    \hat{v} = \frac{1}{N} \sum_{i=1}^{N} \phi_i \, u_i, \quad \phi_i = \begin{cases} +1 & \text{if } x_{\text{bd}} + \delta u_i \text{ is adversarial} \\ -1 & \text{otherwise} \end{cases}
+\end{equation}
+followed by normalisation. This is a Monte Carlo estimate of the boundary's normal direction. $N$ grows like $\sqrt{t}$ across iterations, capped at 1{,}000 in my experiments.
+
+The outer loop alternates: estimate $\hat{v}$, take a geometric step in that direction, project back to the boundary. The step size starts at $d / \sqrt{t+1}$ where $d$ is the current distance to clean, and halves on each failure to land in the adversarial region. The attack terminates when the query budget is exhausted. The full implementation lives in \texttt{src/attacks/hopskipjump.py} and is approximately 250 lines.
+
+\subsection{One Pixel Implementation}
+
+The One Pixel Attack~\cite{su2019onepixel} searches for $k$ pixels and their RGB values such that perturbing only those pixels causes a misclassification. The objective is non-differentiable in the pixel coordinates (those are integer indices), so I use differential evolution rather than gradient descent.
+
+Each candidate solution is a flat vector of length $5k$, encoding $k$ tuples of $(x, y, r, g, b)$. The fitness is the model's softmax probability on the true class (untargeted attack); lower is better. I implemented standard DE/rand/1/bin: at each generation, for each member of the population, I form a trial by combining three randomly chosen members with mutation factor $F = 0.5$ and crossover rate $CR = 0.7$, evaluate the trial via a single batched forward pass, and replace the member if the trial has lower fitness. The attack terminates when the best candidate fools the model or the iteration budget is exhausted.
+
+I used population size 400 and 50 generations for the experiments. The attack requires no gradients, but it does need score-level access (probabilities) to drive the DE fitness, so the threat model is slightly stronger than HopSkipJump's strict label-only assumption. The implementation lives in \texttt{src/attacks/one\_pixel.py}.
+
+\subsection{Transferability Evaluation}
+
+The transferability study reuses the attack implementations above rather than introducing new attack code. I select the test images that both models classify correctly, craft FGSM, PGD, and C\&W examples against each model in turn, and record the other model's accuracy on the resulting examples. Because the attacks are deterministic given a fixed seed and the two models share the same architecture and $[0, 1]$ input convention, no special handling is needed beyond running each crafted batch of images through both models. The driver lives in \texttt{scripts/evaluate\_transfer.py}.
+
+\subsection{Adversarial Training Implementation}
+
+I implemented adversarial training following Madry et al.~\cite{madry2018towards}. At each training step I generate PGD adversarial examples from the current batch and train on those examples instead of the clean inputs.
+
+I encountered a subtle issue with batch normalization during this process. When the model is in training mode during adversarial example generation, the forward passes update the batch normalization running statistics with adversarial inputs, which corrupts these statistics. The model still trains without errors but produces poor robustness. The fix is to set the model to evaluation mode (\texttt{model.eval()}) during PGD generation and switch back to training mode (\texttt{model.train()}) for the weight update. This detail is rarely mentioned in the literature but has a substantial effect on the final model.
+
+I used SGD with momentum 0.9, weight decay $5 \times 10^{-4}$, initial learning rate 0.1 with cosine annealing. I selected checkpoints based on PGD robust accuracy rather than clean accuracy. All experiments were logged to MLflow.
+
+\section{Development Environment}
+
+\begin{itemize}
+    \item \textbf{Operating System:} macOS (Apple Silicon)
+    \item \textbf{Python Version:} 3.13
+    \item \textbf{PyTorch Version:} 2.x with MPS (Metal Performance Shaders) backend
+    \item \textbf{Hardware:} Apple M4 Pro (2024), 24 GB unified memory, 1 TB SSD
+    \item \textbf{Experiment Tracking:} MLflow
+    \item \textbf{Deployment:} Docker, HuggingFace Spaces
+\end{itemize}
+
+I trained on the MPS backend (Apple's GPU acceleration for Apple Silicon). Standard training took approximately 55 minutes for 50 epochs. Adversarial training took approximately 4.5 hours for 50 epochs, roughly $7\times$ slower, which is expected given that each training step includes a 7-step PGD attack in addition to the standard forward and backward passes.
+
+\section{Challenges and Solutions}
+
+I encountered several implementation issues:
+
+\textbf{DeepFool numerical stability.} DeepFool requires gradients for all 10 classes in a loop. In PyTorch, \texttt{backward()} frees the computation graph by default, requiring \texttt{retain\_graph=True} for subsequent gradient computations. I also encountered cases where gradient differences between classes were near zero, causing NaN values in the norm computation. I resolved this by adding $10^{-8}$ to all denominators.
+
+\textbf{PGD memory.} As described above, failing to call \texttt{.detach()} after each PGD iteration causes the computation graph to grow across iterations, leading to out-of-memory errors. The fix is a single line of code, but the failure mode is not immediately obvious since the program runs correctly until memory is exhausted.
+
+\textbf{Batch normalization in adversarial training.} As described above, the model must be set to evaluation mode during adversarial example generation to prevent corruption of batch normalization statistics. Without this, training completes without errors but produces a model with reduced robustness.
+
+\textbf{MPS backend.} Apple's MPS support in PyTorch is not yet fully mature. I encountered unsupported operations and occasional numerical discrepancies between MPS and CPU. I verified results on CPU when discrepancies arose.
+
+\textbf{Per-image cost of black-box attacks.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than the gradient-based attacks. Each HopSkipJump attack uses thousands of forward passes, each One Pixel attack uses tens of thousands of forward passes through differential evolution. Running these on the full CIFAR-10 test set was not practical on my hardware. I therefore evaluated them on subsets (\HSJN{} and \OPN{} images respectively, sampled from the test set with a fixed seed) rather than the full 10,000 images. The subset is large enough to give meaningful estimates of the success rates and median perturbation magnitudes; the cost of going larger does not change the qualitative picture.
+
+\textbf{One Pixel CPU--GPU transfer.} The One Pixel attack runs differential evolution on CPU (the search is over integer pixel coordinates and continuous RGB values, which numpy handles more naturally than torch on MPS) but each fitness evaluation is a forward pass on MPS. Naively transferring single images at a time was the bottleneck. I batch the entire DE population into a single forward pass per generation, which made the attack roughly an order of magnitude faster.
+
+\section{Code Organization}
+
+The codebase is structured as follows:
+
+\begin{verbatim}
+adversarial-robustness/
++-- src/
+|   +-- models/
+|   |   +-- resnet.py          # ResNet-18 for CIFAR-10
+|   +-- attacks/
+|   |   +-- fgsm.py            # FGSM attack
+|   |   +-- pgd.py             # PGD attack
+|   |   +-- deepfool.py        # DeepFool attack
+|   |   +-- cw.py              # Carlini-Wagner (L_2, optimization)
+|   |   +-- hopskipjump.py     # HopSkipJump (decision-based black-box)
+|   |   +-- one_pixel.py       # One Pixel attack (L_0, DE-based)
+|   +-- training/
+|   |   +-- standard.py        # Standard training loop
+|   |   +-- adversarial.py     # PGD adversarial training
+|   +-- utils/
+|   |   +-- data.py            # Data loading and transforms
+|   |   +-- metrics.py         # Evaluation metrics
+|   +-- api/
+|       +-- main.py            # FastAPI backend
++-- frontend/
+|   +-- app.py                 # Streamlit demo interface
++-- scripts/
+|   +-- train.py               # Training entry point
+|   +-- evaluate.py            # White-box evaluation entry point
+|   +-- evaluate_cw.py         # Carlini-Wagner evaluation
+|   +-- evaluate_blackbox.py   # Black-box (HSJ, One Pixel) evaluation
+|   +-- evaluate_transfer.py   # Transferability study (cross-model)
++-- configs/
+|   +-- config.yaml            # Hyperparameters
++-- checkpoints/               # Saved model weights
++-- tests/
+|   +-- test_attacks.py        # Unit tests
++-- Dockerfile                 # Container for deployment
+\end{verbatim}
+
+Training and evaluation are run through \texttt{scripts/train.py} and \texttt{scripts/\allowbreak evaluate.py}. Command-line arguments control the training mode and attack parameters. Hyperparameters are stored in \texttt{configs/config.yaml}.
+
+\section{Deployment}
+
+I built a Streamlit web application to provide an interactive demonstration of the attacks. The user selects a CIFAR-10 image or uploads their own, chooses an attack and $\epsilon$ value, and the application displays the original image, the perturbation (amplified for visibility), the adversarial image, and the confidence scores from both the standard and adversarially trained models. I containerized the application with Docker and deployed it on HuggingFace Spaces.
+
+\section{Summary}
+
+This chapter described the implementation of six adversarial attacks from scratch, a transfer-based evaluation between the two models, two training pipelines, and an interactive web demo. The main engineering challenges were memory management in PGD, numerical stability in DeepFool, the batch normalization issue during adversarial training, and the per-image cost of the black-box attacks (HopSkipJump and One Pixel) which required moving to subset-based evaluation. The next chapter presents the experimental results.
+
