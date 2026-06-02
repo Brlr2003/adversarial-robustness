@@ -416,6 +416,31 @@ Clean accuracy is unchanged. All three readouts classify the clean images at $96
 
 Two qualifications apply. The One Pixel images were optimised against the linear head, not against the Hopfield readout, so this is a non-adaptive evaluation. That is exactly the question that was posed, namely how the existing perturbed images are classified by a Hopfield classifier, but an attacker aware of the defense could target it directly. The temperature $\beta$ was also tuned for clean accuracy, which is the conservative choice for a defender who does not know the attack in advance; tuning on a held-out adversarial set could widen the margin. The result is therefore a proof of concept rather than a finished defense. A Hopfield associative memory placed on top of the existing features recovers part of the accuracy lost to the One Pixel attack at no cost to clean accuracy, and it motivates the Hopfield-augmented architecture discussed in Chapter~\ref{ch:conclusion}.
 
+\subsection{Comparison with Adversarial Training}
+\label{sec:hopfield_vs_adv}
+
+The Hopfield readout and adversarial training both defend against the One Pixel attack, but they sit at opposite ends of a cost spectrum. Table~\ref{tab:hopfield_vs_adv} places the three systems on the same 100 images. The adversarially trained model is included in two ways, because the perturbed images in this section were optimised against the standard model: the \emph{transferred} row feeds those exact images to the robust model, and the \emph{direct attack} row reports One Pixel run against the robust model itself, from Section~\ref{sec:onepixel_results}.
+
+\begin{table}[ht]
+    \centering
+    \caption{The three systems on the same 100 images: the standard linear head, the Hopfield nearest-attractor readout on the frozen standard features, and the adversarially trained model. The One Pixel images were crafted against the standard model, so for the robust model the transferred row is a transfer evaluation; the direct-attack row reports One Pixel optimised against the robust model itself (Table~\ref{tab:onepixel_results}). Accuracy is over the 100-image subset.}
+    \label{tab:hopfield_vs_adv}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{System} & \textbf{Clean} & \textbf{$k=1$} & \textbf{$k=3$} & \textbf{$k=5$} \\
+        \midrule
+        Standard model (linear head) & 96.0 & 71.0 & 41.0 & 32.0 \\
+        Hopfield (nearest attractor) & 96.0 & 72.0 & 45.0 & 36.0 \\
+        Adversarially trained (transferred) & 88.0 & 86.0 & 85.0 & 86.0 \\
+        Adversarially trained (direct attack) & 88.0 & 79.0 & 69.0 & 65.0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Two readings follow. On robustness, adversarial training is far stronger. Attacked directly, the robust model retains $79.0\%$, $69.0\%$, and $65.0\%$ accuracy at $k = 1, 3, 5$, against the Hopfield readout's $72.0\%$, $45.0\%$, and $36.0\%$ and the standard head's $71.0\%$, $41.0\%$, and $32.0\%$. The robust model loses at most $23$ points from its clean accuracy, while the standard head and its Hopfield readout lose between a quarter and two thirds of theirs. The transferred row is higher still ($86.0\%$ to $85.0\%$) because those images were optimised against the standard model and One Pixel perturbations transfer poorly to the robust model, consistent with the transfer study in Section~\ref{sec:transfer_results}.
+
+On cost, the ordering reverses. Adversarial training pays for its robustness with $10.2$ percentage points of clean accuracy ($94.1\%$ to $83.9\%$ on the full test set, seen here as $96.0\%$ to $88.0\%$ on the subset) and $4.5$ hours of training. The Hopfield readout pays nothing: it reuses the frozen standard model, leaves clean accuracy at $96.0\%$, and adds only a nearest-neighbour retrieval at inference time. The two defenses are therefore not substitutes. Adversarial training is the right choice when robustness is the priority and the clean-accuracy and compute costs are acceptable, whereas the Hopfield readout is a free add-on that recovers a small part of the lost accuracy without retraining and without any clean-accuracy penalty. A defense that combined the robustness of adversarial training with the zero clean cost of the Hopfield readout would require embedding the associative memory inside the network and training end to end, which is left to future work (Chapter~\ref{ch:conclusion}).
+
 \section{Attack Comparison}
 
 \subsection{Success Rate and Strength Comparison}
