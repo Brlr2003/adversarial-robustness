@@ -58,17 +58,20 @@ def load_model(path: str):
 
 @st.cache_resource
 def load_sample_images():
-    """Load a few CIFAR-10 test images for the demo."""
-    dataset = datasets.CIFAR10(root="./data", train=False, download=True, transform=transforms.ToTensor())
+    """Load a few CIFAR-10 sample images for the demo.
+
+    The images are bundled with the app (sample_images.pt, one per class), so
+    there is no 170 MB CIFAR-10 download at runtime. Downloading on the Space
+    was slow/unreliable and left the app stuck on load_sample_images().
+    """
+    import os
+    path = os.path.join(os.path.dirname(__file__), "sample_images.pt")
+    bundle = torch.load(path, map_location="cpu")
+    imgs, labels = bundle["images"], bundle["labels"]
     samples = {}
-    classes_found = set()
-    for img, label in dataset:
-        class_name = CIFAR10_CLASSES[label]
-        if class_name not in classes_found:
-            samples[class_name] = (img, label)
-            classes_found.add(class_name)
-        if len(classes_found) == 10:
-            break
+    for i in range(len(labels)):
+        label = int(labels[i])
+        samples[CIFAR10_CLASSES[label]] = (imgs[i], label)
     return samples
 
 
