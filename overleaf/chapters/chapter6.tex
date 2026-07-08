@@ -13,35 +13,11 @@ The adversarially trained model also exhibits better confidence calibration. The
 
 \section{Research Contributions}
 
-The contributions of this thesis are:
-
-\begin{enumerate}
-    \item \textbf{White-box attack comparison.} FGSM, PGD, DeepFool, and Carlini--Wagner are evaluated on the same model with the same evaluation protocol. PGD is the strongest $L_\infty$ attack (1.2\% surviving accuracy) and FGSM the weakest (18.3\%); on the $L_2$ axis, Carlini--Wagner finds the smallest perturbations, beating DeepFool, and is the standard against which the adversarially trained model should be measured.
-
-    \item \textbf{Black-box, transfer, and $L_0$ evaluation.} HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$, gradient-free) are implemented, and a transfer-based study between the two models is run, to test whether the white-box conclusions hold against attackers with weaker assumptions. The standard model is broken in the decision-based and $L_0$ settings; the adversarially trained model is more resistant in both, even though PGD adversarial training was not designed against either threat model. The transfer study shows that adversarial examples crafted on the standard model largely fail to fool the robust model, ruling out gradient masking as the source of its robustness.
-
-    \item \textbf{Adversarial training evaluation.} A PGD robust accuracy of 45.1\% and a clean accuracy of 83.9\% are reported, consistent with the results of Madry et al.~\cite{madry2018towards}. The robustness gain partially transfers to black-box and $L_0$ attacks, suggesting that PGD-AT regularises the decision boundary in ways that go beyond the trained threat model.
-
-    \item \textbf{Open-source code.} The full codebase is released on GitHub, including all attack implementations, training scripts, evaluation code, and an interactive demo on HuggingFace Spaces. The modular design allows new attacks to be added by writing a single file.
-
-    \item \textbf{Confidence calibration.} The adversarially trained model produces better-calibrated confidence scores. The standard model outputs 99\% confidence on incorrect predictions; the adversarially trained model outputs approximately 55\% on correct ones.
-\end{enumerate}
+This thesis makes five contributions. The first is a white-box attack comparison: FGSM, PGD, DeepFool, and Carlini--Wagner are evaluated on the same model with the same evaluation protocol, which shows PGD to be the strongest $L_\infty$ attack (1.2\% surviving accuracy) and FGSM the weakest (18.3\%), while on the $L_2$ axis Carlini--Wagner finds the smallest perturbations, beating DeepFool, and is the standard against which the adversarially trained model should be measured. The second is a black-box, transfer, and $L_0$ evaluation: HopSkipJump (decision-based, $L_2$) and One Pixel ($L_0$, gradient-free) are implemented and a transfer-based study between the two models is run, to test whether the white-box conclusions hold against attackers with weaker assumptions. The standard model is broken in the decision-based and $L_0$ settings and the adversarially trained model is more resistant in both, even though PGD adversarial training was not designed against either threat model, and the transfer study shows that adversarial examples crafted on the standard model largely fail to fool the robust model, which rules out gradient masking as the source of its robustness. The third is the adversarial training evaluation itself: a PGD robust accuracy of 45.1\% and a clean accuracy of 83.9\% are reported, consistent with the results of Madry et al.~\cite{madry2018towards}, and the robustness gain partially transfers to black-box and $L_0$ attacks, which suggests that PGD adversarial training regularises the decision boundary in ways that go beyond the trained threat model. The fourth is the open-source release: the full codebase is on GitHub, including all attack implementations, training scripts, evaluation code, and an interactive demo on HuggingFace Spaces, with a modular design that allows a new attack to be added by writing a single file. The fifth concerns confidence calibration: the standard model outputs 99\% confidence on incorrect predictions, whereas the adversarially trained model outputs approximately 55\% on correct ones, which is a more reasonable and more useful calibration.
 
 \section{Limitations}
 
-The following limitations apply:
-
-\begin{enumerate}
-    \item \textbf{CIFAR-10 only.} The experiments use $32 \times 32$ images with 10 classes. The perceptual meaning of $\epsilon = 8/255$ differs at higher resolutions. These results cannot be claimed to generalize to ImageNet without running those experiments.
-
-    \item \textbf{ResNet-18 only.} A single architecture was tested. Other architectures, such as Vision Transformers, may exhibit different robustness properties.
-
-    \item \textbf{Black-box and $L_0$ on subsets only.} HopSkipJump and One Pixel are several orders of magnitude more expensive per image than gradient-based attacks. They were evaluated on subsets (\HSJN{} and \OPN{} images respectively) rather than the full test set. Carlini--Wagner is batched and runs on a larger subset, but still not the full test set. Larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative conclusions.
-
-    \item \textbf{Single defense.} Only PGD adversarial training was evaluated. Certified defenses, randomized smoothing, and input preprocessing are also worth investigating.
-
-    \item \textbf{Hardware constraints.} Training on an Apple M4 Pro limited the ability to run extensive hyperparameter searches. Adversarial training on CIFAR-10 alone took 4.5 hours.
-\end{enumerate}
+Several limitations apply. The experiments use CIFAR-10 only, that is $32 \times 32$ images with 10 classes, and the perceptual meaning of $\epsilon = 8/255$ differs at higher resolutions, so these results cannot be claimed to generalize to ImageNet without running those experiments. A single architecture, ResNet-18, was tested, and other architectures such as Vision Transformers may exhibit different robustness properties. The black-box and $L_0$ attacks were evaluated on subsets rather than the full test set, because HopSkipJump and One Pixel are several orders of magnitude more expensive per image than the gradient-based attacks (\HSJN{} and \OPN{} images respectively), and Carlini--Wagner, while batched, still runs on a subset rather than all 10{,}000 images; larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative conclusions. Only a single defense, PGD adversarial training, was evaluated, leaving certified defenses, randomized smoothing, and input preprocessing for future work. Finally, hardware was a constraint: training on an Apple M4 Pro limited the ability to run extensive hyperparameter searches, and adversarial training on CIFAR-10 alone took 4.5 hours.
 
 \section{Future Work}
 \label{sec:future_work}
@@ -50,15 +26,7 @@ Several directions for future work can be identified.
 
 \subsection{Short-term}
 
-The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chapter~\ref{ch:results} close the most obvious gap in earlier drafts of this thesis: every attack used to be white-box and $L_\infty$. The evaluation now spans $L_\infty$, $L_2$, and $L_0$, and white-box, decision-based, and transfer-based settings. The remaining short-term extensions are:
-
-\begin{itemize}
-    \item \textbf{Additional PGD restarts.} Using a single random restart gives a lower bound on vulnerability. Running PGD with 5--10 restarts would tighten this bound and is essentially free to add.
-
-    \item \textbf{Larger black-box evaluations.} The current HopSkipJump and One Pixel evaluations use \HSJN{} and \OPN{} images respectively; running on the full test set would tighten the standard error on the reported numbers, although the qualitative conclusions are unlikely to change.
-
-    \item \textbf{Stronger Carlini--Wagner settings.} C\&W is run here with a fixed number of binary-search steps and Adam iterations on a subset. More search steps and a higher iteration budget on the full test set would further tighten the reported $L_2$ distances, particularly for the adversarially trained model.
-\end{itemize}
+The Carlini--Wagner, HopSkipJump, One Pixel, and transferability results in Chapter~\ref{ch:results} close the most obvious gap in earlier drafts of this thesis: every attack used to be white-box and $L_\infty$. The evaluation now spans $L_\infty$, $L_2$, and $L_0$, and white-box, decision-based, and transfer-based settings. Three short-term extensions remain. Using a single random restart gives only a lower bound on vulnerability, so running PGD with 5--10 restarts would tighten that bound and is essentially free to add. The current HopSkipJump and One Pixel evaluations use \HSJN{} and \OPN{} images respectively, and running them on the full test set would tighten the standard error on the reported numbers, although the qualitative conclusions are unlikely to change. Carlini--Wagner is run here with a fixed number of binary-search steps and Adam iterations on a subset, and more search steps with a higher iteration budget on the full test set would further tighten the reported $L_2$ distances, particularly for the adversarially trained model.
 
 \subsection{Long-term}
 

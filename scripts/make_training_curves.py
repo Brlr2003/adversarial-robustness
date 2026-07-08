@@ -70,9 +70,16 @@ def main():
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2))
 
+    # Black lines distinguished by line style and marker shape, so the figure
+    # reads on a black-and-white printout (no reliance on colour). Markers are
+    # thinned with markevery so the 50-epoch curves stay legible.
+    me = 6
+
     # Left: training loss
-    ax1.plot(s_ep, s_loss, color="#c0392b", lw=2, label="Standard")
-    ax1.plot(a_ep, a_loss, color="#2c7fb8", lw=2, label="Adversarial")
+    ax1.plot(s_ep, s_loss, color="black", lw=1.8, ls="-", marker="o",
+             markevery=me, ms=5, label="Standard")
+    ax1.plot(a_ep, a_loss, color="black", lw=1.8, ls="--", marker="s",
+             markevery=me, ms=5, markerfacecolor="white", label="Adversarial")
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Training loss")
     ax1.set_title("Training loss")
@@ -80,9 +87,12 @@ def main():
     ax1.legend()
 
     # Right: test accuracy
-    ax2.plot(s_ep, s_testacc, color="#c0392b", lw=2, label="Standard (clean)")
-    ax2.plot(a_ep, a_clean, color="#2c7fb8", lw=2, label="Adv-Trained (clean)")
-    ax2.plot(a_ep, a_pgd, color="#2c7fb8", lw=2, ls="--", label="Adv-Trained (PGD robust)")
+    ax2.plot(s_ep, s_testacc, color="black", lw=1.8, ls="-", marker="o",
+             markevery=me, ms=5, label="Standard (clean)")
+    ax2.plot(a_ep, a_clean, color="black", lw=1.8, ls="--", marker="s",
+             markevery=me, ms=5, markerfacecolor="white", label="Adv-Trained (clean)")
+    ax2.plot(a_ep, a_pgd, color="black", lw=1.8, ls=":", marker="^",
+             markevery=me, ms=6, label="Adv-Trained (PGD robust)")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Test accuracy (%)")
     ax2.set_title("Test accuracy")
@@ -92,7 +102,7 @@ def main():
 
     plt.tight_layout()
     out = os.path.join(ROOT, "overleaf/figures/training_curves.png")
-    plt.savefig(out, dpi=200, bbox_inches="tight")
+    plt.savefig(out, dpi=300, bbox_inches="tight")
     plt.savefig(out.replace(".png", ".pdf"), bbox_inches="tight")
     print("saved", out, "and the .pdf")
     # report key values for caption/text consistency

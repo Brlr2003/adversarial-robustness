@@ -17,5 +17,12 @@ COPY . .
 # Expose Streamlit port
 EXPOSE 7860
 
+# Force a light theme so the app (and its screenshots) are readable on B&W print,
+# regardless of the viewer's system dark mode.
+ENV STREAMLIT_THEME_BASE=light \
+    STREAMLIT_THEME_BACKGROUNDCOLOR="#ffffff" \
+    STREAMLIT_THEME_SECONDARYBACKGROUNDCOLOR="#f0f2f6" \
+    STREAMLIT_THEME_TEXTCOLOR="#1b2631"
+
 # HuggingFace Spaces expects port 7860
 CMD ["streamlit", "run", "frontend/app.py", "--server.port=7860", "--server.address=0.0.0.0", "--server.headless=true"]

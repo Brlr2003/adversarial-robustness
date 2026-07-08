@@ -29,10 +29,15 @@ The scope is restricted to evasion attacks at test time in the image classificat
 Much of the existing work either remains theoretical or relies on adversarial ML libraries without investigating the underlying mechanics. To this end, the following objectives are set:
 
 \begin{itemize}
-    \item Implement FGSM, BIM/PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel from scratch in PyTorch and evaluate them on MNIST and CIFAR-10.
-    \item Evaluate at multiple perturbation budgets to characterize how accuracy degrades as $\epsilon$ increases, and at multiple query budgets for the decision-based attack.
-    \item Apply PGD-based adversarial training and measure the resulting trade-off between robustness and clean accuracy across white-box and black-box threat models.
-    \item Compare all six attacks under identical conditions (same model, same data, same evaluation protocol) spanning $L_\infty$, $L_2$, and $L_0$ threat models.
+    \item \textbf{Attack construction.} Can the six canonical attacks be reproduced from their published formulations without relying on an adversarial ML library? FGSM, BIM/PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel are implemented from scratch in PyTorch against a ResNet-18 (11.17M parameters) trained on CIFAR-10 (94.1\% clean accuracy). Success is measured by driving the standard model's accuracy to 1.2\% under 20-step PGD at $\epsilon=8/255$ and by the minimum perturbation each attack requires: median $L_2$ of 0.104 (Carlini--Wagner) and 0.36 (HopSkipJump), and a single-pixel change sufficient to flip 26.0\% of correctly classified inputs at $k{=}1$.
+
+    \item \textbf{Budget sensitivity.} How does accuracy degrade as the adversary is given more room? Each attack is evaluated across perturbation budgets ($L_\infty$ $\epsilon$ from 0 to $8/255$; $L_0$ from 1 to 5 pixels) and, for the decision-based HopSkipJump, across query budgets, to produce accuracy-versus-budget curves rather than single operating points.
+
+    \item \textbf{Defense and its cost.} What does PGD adversarial training buy, and what does it cost? A model is trained with 7-step inner PGD ($\epsilon=8/255$, $\alpha=2/255$, random start) and measured against the standard model under an identical protocol. The target is a quantified trade-off: PGD@$8/255$ accuracy raised from 1.2\% to 45.1\% at a clean-accuracy cost of 10.2 points (94.1\% to 83.9\%), with the same comparison reported for DeepFool ($L_2$ 0.248 to 0.892), Carlini--Wagner (median $L_2$ 0.104 to 0.758), HopSkipJump (median $L_2$ 0.36 to 2.10), and One Pixel.
+
+    \item \textbf{Transfer and threat model.} Do adversarial examples crafted on the standard model defeat the defended one? Perturbations are transferred from the standard to the robust model to measure black-box robustness, where the robust model retains 97.2--99.9\% accuracy on transferred FGSM, PGD, and Carlini--Wagner examples, complementing the white-box results and covering $L_\infty$, $L_2$, and $L_0$ threat models under one evaluation setup.
+
+    \item \textbf{Non-parametric readout.} Can robustness be added without retraining the backbone? A modern Hopfield readout is placed over the frozen standard model's 512-dimensional features (attractors stored from the 50k training embeddings) and compared to the linear head at zero clean-accuracy cost (96.0\% both). The target is a consistent improvement on One Pixel inputs: 72.0/45.0/36.0\% versus 71.0/41.0/32.0\% at $k{=}1/3/5$.
 \end{itemize}
 
 \section{Contributions}

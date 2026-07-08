@@ -98,7 +98,9 @@ def tensor_to_pil(tensor, upscale=8):
 
 def create_confidence_chart(probs, title="Confidence", highlight_class=None):
     """Create a horizontal bar chart of class probabilities."""
-    colors = ["#ef4444" if CIFAR10_CLASSES[i] == highlight_class else "#3b82f6" for i in range(10)]
+    # B&W-print-safe: predicted class is dark (low luminance), the rest light gray
+    # (high luminance), so the bars are distinguishable even in grayscale.
+    colors = ["#b91c1c" if CIFAR10_CLASSES[i] == highlight_class else "#cbd5e1" for i in range(10)]
     fig = go.Figure(go.Bar(
         x=probs,
         y=CIFAR10_CLASSES,

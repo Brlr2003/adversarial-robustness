@@ -215,14 +215,20 @@ def main():
     methods = ["standard", "hopfield-nn", "hopfield-fc"]
     labels_disp = {"standard": "Standard head", "hopfield-nn": "Hopfield (nearest attractor)",
                    "hopfield-fc": "Hopfield denoise + head"}
-    colors = {"standard": "#c0392b", "hopfield-nn": "#7f8c8d", "hopfield-fc": "#2c7fb8"}
+    # Three distinct gray levels plus hatching so the bars separate on a
+    # black-and-white printout without relying on colour.
+    bar_style = {
+        "standard":    dict(facecolor="white", hatch="////", edgecolor="black"),
+        "hopfield-nn": dict(facecolor="0.55",  hatch="",     edgecolor="black"),
+        "hopfield-fc": dict(facecolor="0.2",   hatch="....", edgecolor="white"),
+    }
     x = range(len(cols))
     width = 0.26
     xticklabels = ["Clean", "One Pixel k=1", "One Pixel k=3", "One Pixel k=5"]
     for j, m in enumerate(methods):
         vals = [rows[m][c] for c in cols]
         ax.bar([xi + (j - 1) * width for xi in x], vals, width,
-               label=labels_disp[m], color=colors[m])
+               label=labels_disp[m], linewidth=0.8, **bar_style[m])
     ax.set_xticks(list(x))
     ax.set_xticklabels(xticklabels)
     ax.set_ylabel("Accuracy on the 100-image subset (%)")
@@ -232,7 +238,7 @@ def main():
     plt.tight_layout()
     os.makedirs("overleaf/figures", exist_ok=True)
     plt.savefig("overleaf/figures/hopfield_defense.pdf", bbox_inches="tight")
-    plt.savefig("overleaf/figures/hopfield_defense.png", dpi=200, bbox_inches="tight")
+    plt.savefig("overleaf/figures/hopfield_defense.png", dpi=300, bbox_inches="tight")
     print("Saved overleaf/figures/hopfield_defense.pdf")
 
 

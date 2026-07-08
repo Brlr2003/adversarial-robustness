@@ -116,6 +116,15 @@ Adversarial examples often transfer: an example crafted against one model can fo
 
 \section{Defense: Adversarial Training}
 
+Adversarial training augments the training set with worst-case perturbations of each input, which is equivalent to solving the saddle-point problem
+
+\begin{equation}
+    \min_\theta \; \mathbb{E}_{(x,y) \sim \mathcal{D}} \left[ \max_{\|\delta\| \leq \epsilon} J(\theta, x + \delta, y) \right],
+    \label{eq:adv_training}
+\end{equation}
+
+where the inner maximization finds the strongest perturbation $\delta$ within the $\epsilon$-ball and the outer minimization updates the weights $\theta$ against it~\cite{madry2018towards}. The two variants below differ only in how the inner maximization is approximated: a single FGSM step for MNIST, and multi-step PGD for CIFAR-10.
+
 \subsection{FGSM Adversarial Training}
 
 For MNIST FGSM-based adversarial training was used, following Goodfellow et al.~\cite{goodfellow2015explaining}:
@@ -144,18 +153,11 @@ The following metrics are reported for each experiment:
 
 \subsection{Accuracy Metrics}
 
-\begin{itemize}
-    \item \textbf{Clean Accuracy:} Accuracy on unperturbed test images.
-    \item \textbf{Robust Accuracy:} Accuracy on adversarially perturbed test images, measured at each $\epsilon$.
-    \item \textbf{Attack Success Rate:} The fraction of correctly classified clean images that the attack successfully causes to be misclassified.
-\end{itemize}
+Three accuracy metrics are reported. Clean accuracy is the accuracy on unperturbed test images. Robust accuracy is the accuracy on adversarially perturbed test images, measured at each $\epsilon$. Attack success rate is the fraction of correctly classified clean images that the attack causes to be misclassified, so it is computed only over images the model classified correctly in the first place.
 
 \subsection{Perturbation Metrics}
 
-\begin{itemize}
-    \item \textbf{Average $L_2$ norm:} Mean Euclidean distance between clean and adversarial images.
-    \item \textbf{Average $L_\infty$ norm:} Mean maximum per-pixel change across the test set.
-\end{itemize}
+Two perturbation metrics quantify how large the adversarial change is. The average $L_2$ norm is the mean Euclidean distance between the clean and adversarial images, and the average $L_\infty$ norm is the mean maximum per-pixel change, both taken across the test set.
 
 \subsection{Comparison Table}
 
@@ -165,7 +167,7 @@ Table~\ref{tab:methodology_comparison} summarizes the experimental configuration
     \centering
     \caption{Summary of experimental configurations}
     \label{tab:methodology_comparison}
-    \begin{tabular}{llll}
+    \begin{tabular}{@{}l l p{5.2cm} l@{}}
         \toprule
         \textbf{Dataset} & \textbf{Model} & \textbf{Attacks} & \textbf{Defense} \\
         \midrule

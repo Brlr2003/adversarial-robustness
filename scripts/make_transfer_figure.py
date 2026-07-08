@@ -42,26 +42,31 @@ def main():
     for ax, attack in zip(axes, attacks):
         m = matrices[attack]
         grid = np.array([[m[s][t] for t in order] for s in order])
-        im = ax.imshow(grid, cmap="RdYlGn", vmin=0, vmax=100, aspect="equal")
+        # Grayscale (B&W-print safe): low accuracy (strong transfer) is dark,
+        # high accuracy (failed transfer) is light. The annotated number is the
+        # information; the shade is only a visual aid, and it reads in grayscale.
+        ax.imshow(grid, cmap="Greys_r", vmin=0, vmax=100, aspect="equal")
         ax.set_xticks(range(len(order)))
         ax.set_yticks(range(len(order)))
-        ax.set_xticklabels([LABELS[t] for t in order])
-        ax.set_yticklabels([LABELS[s] for s in order])
-        ax.set_xlabel("Target (evaluated)")
+        ax.set_xticklabels([LABELS[t] for t in order], fontsize=11)
+        ax.set_yticklabels([LABELS[s] for s in order], fontsize=11)
+        ax.set_xlabel("Target (evaluated)", fontsize=11)
         if ax is axes[0]:
-            ax.set_ylabel("Source (crafted on)")
-        ax.set_title(PRETTY[attack])
+            ax.set_ylabel("Source (crafted on)", fontsize=11)
+        ax.set_title(PRETTY[attack], fontsize=13)
         for i in range(len(order)):
             for j in range(len(order)):
-                ax.text(j, i, f"{grid[i, j]:.1f}", ha="center", va="center",
-                        color="black", fontsize=11, fontweight="bold")
+                v = grid[i, j]
+                ax.text(j, i, f"{v:.1f}", ha="center", va="center",
+                        color="white" if v < 50 else "black",
+                        fontsize=13, fontweight="bold")
 
-    fig.suptitle("Transfer accuracy (%): lower = stronger transfer", y=1.02)
+    fig.suptitle("Transfer accuracy (%): darker = lower accuracy = stronger transfer", y=1.02, fontsize=12)
     plt.tight_layout()
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    plt.savefig(args.output, dpi=200, bbox_inches="tight")
+    plt.savefig(args.output, dpi=300, bbox_inches="tight")
     pdf = args.output.replace(".png", ".pdf")
-    plt.savefig(pdf, dpi=200, bbox_inches="tight")
+    plt.savefig(pdf, dpi=300, bbox_inches="tight")
     print(f"saved {args.output} and {pdf}")
 
 

@@ -36,9 +36,10 @@ def main():
         data = json.load(f)
 
     fig, ax = plt.subplots(figsize=(7, 4.2))
+    # Black curves separated by line style and marker so they read in grayscale.
     styles = {
-        "standard": dict(color="#c0392b", label="Standard"),
-        "robust": dict(color="#2c7fb8", label="Adv-Trained"),
+        "standard": dict(ls="-", marker="o", mfc="black", label="Standard"),
+        "robust": dict(ls="--", marker="s", mfc="white", label="Adv-Trained"),
     }
     for tag, st in styles.items():
         if tag not in data:
@@ -49,9 +50,11 @@ def main():
         if not solved:
             continue
         x, y = cdf_points(solved)
-        ax.plot(x, y * 100, lw=2, **st)
+        ax.plot(x, y * 100, color="black", lw=1.8, ls=st["ls"], marker=st["marker"],
+                markevery=max(1, len(x) // 8), ms=5, markerfacecolor=st["mfc"],
+                label=st["label"])
         med = float(np.median(solved))
-        ax.axvline(med, color=st["color"], ls=":", lw=1, alpha=0.7)
+        ax.axvline(med, color="black", ls=":", lw=1, alpha=0.6)
 
     ax.set_xlabel(r"$L_2$ perturbation")
     ax.set_ylabel("Cumulative % of attacked images")
@@ -63,9 +66,9 @@ def main():
 
     plt.tight_layout()
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    plt.savefig(args.output, dpi=200, bbox_inches="tight")
+    plt.savefig(args.output, dpi=300, bbox_inches="tight")
     pdf = args.output.replace(".png", ".pdf")
-    plt.savefig(pdf, dpi=200, bbox_inches="tight")
+    plt.savefig(pdf, dpi=300, bbox_inches="tight")
     print(f"saved {args.output} and {pdf}")
 
 

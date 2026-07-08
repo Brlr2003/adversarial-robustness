@@ -33,6 +33,16 @@ Two ResNet-18 models were trained on CIFAR-10: one with standard training and on
 
 Standard training took approximately 55 minutes. Adversarial training took approximately 4.5 hours, roughly $7\times$ slower due to the PGD computation at each training step.
 
+\subsection{Justification of Training Hyperparameters}
+
+Table~\ref{tab:training_config} lists the values; the reasoning behind each is given here, since the two models differ only in the adversarial inner loop and share this configuration.
+
+The starting learning rate of $0.1$ is the standard value for training ResNets on CIFAR-10 with SGD, from He et al.~\cite{he2016deep}. It is large enough to make rapid progress across the loss surface in the early epochs, and it is paired with the cosine schedule so that it is not left high for the whole run. A momentum of $0.9$ accumulates the gradient across steps, which accelerates progress along directions that stay consistent from batch to batch and damps the oscillation that plain SGD shows in narrow valleys of the loss. The weight decay of $5 \times 10^{-4}$ is an $L_2$ penalty on the weights; on $50{,}000$ training images an $11.17$-million-parameter model has ample capacity to memorise the training set, and this penalty is the main regulariser that keeps the standard model's $99.9\%$ training accuracy from collapsing its test accuracy. The value follows He et al.~\cite{he2016deep} and was not retuned.
+
+Cosine annealing decays the learning rate smoothly from $0.1$ toward zero over the $50$ epochs, with no manual step boundaries to place. It was preferred over the step schedule (the alternative kept in the config file, with drops at epochs $25$ and $40$) because it removes those two hand-set milestones and, in practice on this setup, reached a marginally lower final loss. The batch size of $128$ is the common choice for CIFAR-10 ResNets: it is small enough that the gradient noise still helps generalisation, and large enough to use the GPU efficiently. It also fits comfortably in the $24$~GB of unified memory even during adversarial training, where each batch additionally holds the intermediate tensors of a $7$-step PGD attack. The learning rate and batch size are set together: $0.1$ is the rate that is known to be stable at batch $128$ for this architecture.
+
+Fifty epochs is where clean training converged. The standard model's loss had fallen below $0.01$ and its test accuracy had settled at $94.1\%$ with no further improvement, so additional epochs would have added compute without changing the result. The same budget was kept for adversarial training so that the two models are compared on an equal footing, and it also bounds the adversarial run, which is already $7\times$ slower per epoch, to a practical $4.5$ hours.
+
 \subsection{Attack Parameters}
 
 Table~\ref{tab:attack_params} lists the attack configurations used during evaluation.
@@ -70,6 +80,14 @@ An interactive web demo was also built on HuggingFace Spaces (Figure~\ref{fig:de
     \label{fig:demo_interface}
 \end{figure}
 
+\subsection{Adversarial Training and Evaluation Attack Settings}
+
+The inner attack of adversarial training is a $7$-step $L_\infty$ PGD at $\epsilon = 8/255$ with step size $\alpha = 2/255$ and a random start, run per batch. At each training step the current batch is first turned into adversarial examples by this attack, and the weight update is then computed on those examples alone rather than on a mix of clean and adversarial inputs, which is the saddle-point formulation of Madry et al.~\cite{madry2018towards}. The step size $\alpha = 2/255$ over $7$ steps gives a total travel of $14/255$, comfortably more than the $\epsilon = 8/255$ radius, so the attack can reach the boundary of the $\epsilon$-ball and still take corrective steps inside it after each projection. Seven steps rather than the $20$ used at evaluation is the standard efficiency trade for the inner loop: it is the dominant cost of training ($7$ extra forward and backward passes per batch), and a weaker inner attack during training is known to be sufficient to produce a model that resists the stronger attack at test time. During this generation the model is held in evaluation mode so that the batch-normalization running statistics are read, not updated, from the adversarial inputs; the switch back to training mode for the weight update is the fix described in Chapter~\ref{ch:implementation}.
+
+The final checkpoint is the epoch with the highest PGD robust accuracy on the test set, not the highest clean accuracy. For a robust model the clean accuracy is not the quantity of interest, and selecting on it would favour epochs that drift back toward the standard model. The selected checkpoint has $83.9\%$ clean accuracy, against a peak PGD robust accuracy of $50.6\%$ reached during training.
+
+Evaluation uses a stronger attack than training: $20$-step PGD with step size $\alpha = \epsilon/4$ and a random start. Twenty steps is well past the point at which robust accuracy stops falling for $\epsilon = 8/255$ on this model, so the reported figure is not an artifact of stopping the attack early. Tying the step size to the budget as $\alpha = \epsilon/4$ keeps the attack calibrated across the range of $\epsilon$ values in Table~\ref{tab:attack_params}: it is small enough to refine the perturbation inside the $\epsilon$-ball rather than bouncing off its faces, while still allowing the iterate to traverse the ball within the $20$ steps. A single random restart is used, which is the standard protocol for reporting robust accuracy on adversarially trained models.
+
 \section{Baseline Results}
 
 \subsection{Model Performance on Clean Data}
@@ -91,6 +109,23 @@ Table~\ref{tab:clean_accuracy} reports the clean test accuracy of both models.
 \end{table}
 
 The standard model achieves 94.1\%, which is consistent with published results for ResNet-18 on CIFAR-10 without input normalization. The adversarially trained model achieves 83.9\%, a reduction of 10.2 percentage points. This trade-off is consistent with prior work~\cite{madry2018towards} and is discussed further in Section~\ref{sec:tradeoffs}.
+
+Figure~\ref{fig:confusion} breaks the two accuracies down per class. Both models make the same kind of mistakes, concentrated on the visually similar animal classes. On the standard model the largest off-diagonal entries are cat predicted as dog (55 images) and dog predicted as cat (54), while the vehicle classes are almost perfect (automobile is missed only 30 times out of 1{,}000, most often as truck). The adversarially trained model keeps the same confusion structure but with more mass off the diagonal in every class, which is the per-class picture of its 10.2 point lower clean accuracy: the features that stay stable under worst-case perturbation are not the ones that best separate the hardest clean classes.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{figures/confusion_standard.pdf}
+        \caption{Standard model (94.1\%).}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{figures/confusion_robust.pdf}
+        \caption{Adversarially trained model (83.9\%).}
+    \end{subfigure}
+    \caption{Confusion matrices on the full CIFAR-10 test set (10{,}000 images). Cell $(i, j)$ is the number of true class-$i$ images predicted as class $j$, so the diagonal counts correct predictions. The shading is grayscale (darker = larger count) and every non-zero count is printed, so the matrices remain readable in black and white.}
+    \label{fig:confusion}
+\end{figure}
 
 \section{Attack Evaluation Results}
 
@@ -284,7 +319,7 @@ The three attacks rank consistently by how well they transfer. FGSM transfers be
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figures/transfer_matrix.pdf}
-    \caption{Transferability between the two models for FGSM, PGD, and C\&W. Each cell is the target model's accuracy on adversarial examples crafted against the source model (green = high accuracy, i.e.\ weak attack/transfer; red = low). The diagonals are white-box; the off-diagonals are transfer. The top-right cell of each panel (standard examples evaluated on the adversarially trained model) stays near 100\%, showing that the robust model's resistance does not come from gradient masking.}
+    \caption{Transferability between the two models for FGSM, PGD, and C\&W. Each cell is the target model's accuracy on adversarial examples crafted against the source model (lighter = higher accuracy, i.e.\ weaker attack/transfer; darker = lower). The diagonals are white-box; the off-diagonals are transfer. The top-right cell of each panel (standard examples evaluated on the adversarially trained model) stays near 100\%, showing that the robust model's resistance does not come from gradient masking.}
     \label{fig:transfer_matrix}
 \end{figure}
 
@@ -297,7 +332,7 @@ Figure~\ref{fig:adversarial_examples} shows a CIFAR-10 image attacked with FGSM 
     \begin{subfigure}[b]{0.95\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/FGSM.png}
-        \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled with near-100\% confidence on the wrong class, while the robust model correctly identifies the cat with approximately 52\% confidence.}
+        \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled into predicting \texttt{cat} with 96.1\% confidence, while the robust model still correctly identifies the \texttt{dog} (65.9\%) on the same perturbed image.}
         \label{fig:attack_fgsm}
     \end{subfigure}
 
@@ -306,18 +341,18 @@ Figure~\ref{fig:adversarial_examples} shows a CIFAR-10 image attacked with FGSM 
     \begin{subfigure}[b]{0.95\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/PGD.png}
-        \caption{PGD attack ($\epsilon = 8/255$, 20 steps): the stronger iterative attack also fools the standard model with near-100\% confidence, while the robust model maintains the correct prediction.}
+        \caption{PGD attack ($\epsilon = 8/255$, 20 steps): the stronger iterative attack drives the standard model to 100\% confidence on \texttt{cat}, while the robust model maintains the correct \texttt{dog} prediction (64.9\%).}
         \label{fig:attack_pgd}
     \end{subfigure}
 
-    \caption{Visual comparison of FGSM and PGD adversarial attacks on a CIFAR-10 cat image. Each panel shows the original image, the adversarial perturbation (amplified for visibility), the adversarial image, and the predictions of both the standard model (fooled) and the robust model (correct). The perturbations are imperceptible to human observers yet cause confident misclassification in the standard model.}
+    \caption{Visual comparison of FGSM and PGD adversarial attacks on a CIFAR-10 dog image, captured from the interactive demo. Each panel shows the original image, the adversarial image, the adversarial perturbation (amplified for visibility), and the predictions of both the standard model (fooled) and the robust model (correct) on the same perturbed input. The perturbations are imperceptible to human observers yet cause confident misclassification in the standard model.}
     \label{fig:adversarial_examples}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figures/DeepFool.png}
-    \caption{DeepFool attack on the same CIFAR-10 cat image: finds the minimal perturbation to cross the decision boundary. The standard model is fooled, while the robust model resists the minimal perturbation. Unlike FGSM and PGD (Figure~\ref{fig:adversarial_examples}), DeepFool does not use a fixed $\epsilon$ budget but instead computes the smallest perturbation needed to change the prediction.}
+    \caption{DeepFool attack on the same CIFAR-10 dog image: it finds the minimal perturbation ($L_2 = 0.247$) that crosses the decision boundary. The standard model is fooled into predicting \texttt{frog} (54.2\%), while the robust model resists the minimal perturbation and still predicts \texttt{dog} (68.4\%). Unlike FGSM and PGD (Figure~\ref{fig:adversarial_examples}), DeepFool does not use a fixed $\epsilon$ budget but instead computes the smallest perturbation needed to change the prediction.}
     \label{fig:attack_deepfool}
 \end{figure}
 
@@ -475,6 +510,33 @@ FGSM and PGD both saturate the $\epsilon$ budget, perturbing every pixel by exac
 
 After adversarial training, DeepFool requires an average of 0.892 $L_2$ perturbation, approximately $3.6\times$ larger. Carlini--Wagner, the stronger $L_2$ attack, finds a smaller average perturbation on both models (0.117 standard, 0.815 adv-trained) at a $7.0\times$ ratio, and DeepFool, HopSkipJump, and C\&W therefore agree to within a small factor on how far adversarial training pushes the decision boundary. This confirms that adversarial training moves the decision boundaries further from the data.
 
+The same perturbation sizes can be read as a perceptual quality, the peak signal-to-noise ratio (PSNR) between the clean and the adversarial image, where a higher value means a less visible change. Table~\ref{tab:psnr} reports the PSNR of each attack. The two budget attacks sit near 30 dB, because $L_\infty$ FGSM and PGD spread a change across every pixel, whereas the minimum-perturbation attacks are far less visible: DeepFool reaches 47.0 dB and Carlini--Wagner 54.5 dB on the standard model. On the adversarially trained model every attack must spend more perturbation, so its PSNR falls (Carlini--Wagner from 54.5 to 37.3 dB), which is the perceptual restatement of the larger $L_2$ perturbations reported above.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Peak signal-to-noise ratio (PSNR, in dB) of the adversarial perturbations; higher means a less perceptible change. FGSM and PGD are measured directly on a 1{,}000-image test subset; DeepFool and Carlini--Wagner are computed from their reported $L_2$ perturbations ($\mathrm{PSNR} = 20 \log_{10}(1 / (L_2 / \sqrt{3072}))$ for images in $[0,1]$).}
+    \label{tab:psnr}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Attack} & \textbf{Standard} & \textbf{Adv-Trained} \\
+        \midrule
+        FGSM ($\epsilon = 8/255$) & 30.2 & 30.1 \\
+        PGD ($\epsilon = 8/255$) & 32.7 & 30.4 \\
+        DeepFool & 47.0 & 35.9 \\
+        Carlini--Wagner & 54.5 & 37.3 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Comparison with GAN-Based Attacks}
+\label{sec:gan_comparison}
+
+The six attacks evaluated here all construct the perturbation per image, at the time of the attack. FGSM, PGD, DeepFool, and Carlini--Wagner run gradient descent (or a single gradient step) against the victim; HopSkipJump and One Pixel run a query-driven search. In every case the work is repeated from scratch for each new input, and the cost scales with the number of steps: one backward pass for FGSM, twenty for PGD-20, roughly 93{,}000~ms per batch for C\&W, and thousands of forward passes per image for the two black-box attacks. A separate line of work, the GAN-based attacks reviewed in Section~\ref{ch:literature} (AdvGAN~\cite{xiao2018advgan} and NbuGAN~\cite{topal2026nbugan}), moves this cost off the critical path. A generator network is trained once against the classifier, and thereafter it emits an adversarial perturbation in a single forward pass. The expensive optimization is amortized into the training of the generator rather than paid again on every image.
+
+The two approaches therefore trade different costs. The per-image attacks here need no training and adapt to each input, so the perturbation they find is close to optimal for that specific image: DeepFool and C\&W reach median $L_2$ perturbations of 0.248 and 0.104 on the standard model, and HopSkipJump reaches a median of 0.36 without gradient access. The price is repeated per-image optimization, which for the decision-based attacks meant 190~seconds per run on the standard model and 110~seconds on the adversarially trained model at CIFAR-10 resolution. A trained generator inverts this trade-off. It carries the one-time cost of training and produces a perturbation that is tuned to the generator's view of the classifier (a distilled surrogate in the case of AdvGAN) rather than optimized for each image, but at inference it is far cheaper. NbuGAN~\cite{topal2026nbugan} reports $\approx 55$~seconds per image at a $93.3\%$ targeted success rate on native-resolution ImageNet, faster per image than the decision-based attacks measured here even though those were run on $32 \times 32$ inputs. Once the generator is trained, generation is a single forward pass; the only recurring cost is that pass.
+
+No GAN-based attack was implemented in this thesis. The six attacks were chosen to span the gradient-based white-box setting (FGSM, PGD, DeepFool, C\&W) and the query/search-based black-box setting (HopSkipJump, One Pixel), and a trained-generator attack falls into neither: it is a third methodology with its own training procedure, its own failure modes, and its own evaluation protocol. The comparison in this section is therefore positioning, not measurement. The numbers quoted for NbuGAN are from its authors on ImageNet, not reproduced on the CIFAR-10 models used here, and a like-for-like comparison would require training a generator against these two models under the same $\epsilon$ budget and query accounting. That is left as future work (Chapter~\ref{ch:conclusion}). What the comparison does establish is where the GAN methodology sits relative to the attacks studied here: it targets the inference-time cost that dominates the black-box results, at the cost of a training phase and a perturbation that is not optimized per image.
+
 \section{Discussion}
 
 \subsection{Key Findings}
@@ -502,6 +564,13 @@ The results obtained here are consistent with published numbers. Madry et al.~\c
 \subsection{Limitations and Observations}
 
 Several limitations apply. The experiments are restricted to CIFAR-10 ($32 \times 32$ images), and the same $\epsilon$ budget has different perceptual meaning at higher resolutions. Only ResNet-18 was tested; other architectures may exhibit different robustness properties. One PGD random restart was used; more restarts would provide tighter bounds on vulnerability. The Carlini--Wagner, black-box, and $L_0$ evaluations are limited to subsets (\CWN{} images for C\&W, \HSJN{} for HopSkipJump, \OPN{} for One Pixel) due to per-image cost. Larger evaluations would tighten the standard error on the reported numbers but are unlikely to change the qualitative picture.
+
+\subsection{Reliability of the Reported Numbers}
+\label{sec:reliability}
+
+The reliability of each number depends on how many images it was measured over. FGSM, PGD, and DeepFool were evaluated on the full test set of 10{,}000 images, so their reported accuracies carry a binomial $95\%$ confidence interval of at most $\pm 1$ percentage point; the half-width is largest ($\pm 0.98$) near $50\%$ and smaller toward the extremes. The PGD figures were also checked for sensitivity to the single random restart: repeating the 20-step evaluation on the full test set with three independent random starts changed the robust accuracy by a standard deviation below $0.05$ percentage points, so the random start contributes negligible variance and the restart choice does not affect the reported figure.
+
+The subset attacks carry wider intervals. Carlini--Wagner (\CWN{} images), HopSkipJump (\HSJN{}), and One Pixel (\OPN{}) were each measured on a fixed random subset, so their rates should be read with a confidence interval rather than as exact values. For the One Pixel success rates, which use the smallest subsets ($96$ correctly classified images for the standard model, $88$ for the adversarially trained model), the Wilson $95\%$ intervals are, at $k = 1, 3, 5$: standard $26.0\%$ $[18.3, 35.6]$, $57.3\%$ $[47.3, 66.7]$, $66.7\%$ $[56.8, 75.3]$; adversarially trained $10.2\%$ $[5.5, 18.3]$, $21.6\%$ $[14.3, 31.3]$, $26.1\%$ $[18.1, 36.2]$. The intervals for the two models are disjoint at $k = 3$ and $k = 5$ and touch at $k = 1$, so the roughly $2.5\times$ robustness gap between them is not an artifact of the subset size. A larger subset would narrow these intervals but, given the separation already present, would not change the conclusion.
 
 \section{Summary}
 

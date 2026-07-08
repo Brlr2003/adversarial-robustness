@@ -123,8 +123,11 @@ def main():
     classes = CIFAR10_CLASSES
     x = np.arange(len(classes))
     width = 0.35
-    axes[3].bar(x - width / 2, sap * 100, width, label="Standard")
-    axes[3].bar(x + width / 2, rap * 100, width, label="Adv-Trained")
+    # Grayscale + hatch so the two models separate on a black-and-white print.
+    axes[3].bar(x - width / 2, sap * 100, width, label="Standard",
+                facecolor="0.25", edgecolor="black", linewidth=0.6)
+    axes[3].bar(x + width / 2, rap * 100, width, label="Adv-Trained",
+                facecolor="white", edgecolor="black", hatch="////", linewidth=0.6)
     axes[3].set_xticks(x)
     axes[3].set_xticklabels(classes, rotation=45, ha="right", fontsize=8)
     axes[3].set_ylabel("Confidence (%)")
@@ -133,9 +136,9 @@ def main():
 
     plt.tight_layout()
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    plt.savefig(args.output, dpi=200, bbox_inches="tight")
+    plt.savefig(args.output, dpi=300, bbox_inches="tight")
     pdf_path = args.output.replace(".png", ".pdf")
-    plt.savefig(pdf_path, dpi=200, bbox_inches="tight")
+    plt.savefig(pdf_path, dpi=300, bbox_inches="tight")
     print(f"saved {args.output} and {pdf_path}")
 
 
