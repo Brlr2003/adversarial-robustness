@@ -253,7 +253,7 @@ Figure~\ref{fig:hopskipjump_curve} plots the cumulative fraction of attacked ima
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figures/hopskipjump_curve.pdf}
-    \caption{HopSkipJump on CIFAR-10 in $L_2$ mode: cumulative fraction of images for which the final $L_2$ perturbation is at most the value on the $x$-axis, after a budget of \HSJQ{} queries per image. The standard model crosses the 90\% mark at $L_2 \approx 0.5$; the adversarially trained model needs $L_2 \approx 4.0$ to reach the same point.}
+    \caption{HopSkipJump on CIFAR-10 in $L_2$ mode: cumulative fraction of images for which the final $L_2$ perturbation is at most the value on the $x$-axis, after a budget of \HSJQ{} queries per image. The standard model crosses the 90\% mark at $L_2 \approx 0.7$, while the adversarially trained model reaches only about 72\% even at $L_2 = 4.0$ within the same budget.}
     \label{fig:hopskipjump_curve}
 \end{figure}
 
@@ -329,16 +329,16 @@ Figure~\ref{fig:adversarial_examples} shows a CIFAR-10 image attacked with FGSM 
 
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.95\textwidth}
+    \begin{subfigure}[b]{0.74\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/FGSM.png}
         \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled into predicting \texttt{cat} with 96.1\% confidence, while the robust model still correctly identifies the \texttt{dog} (65.9\%) on the same perturbed image.}
         \label{fig:attack_fgsm}
     \end{subfigure}
 
-    \vspace{0.5cm}
+    \vspace{0.3cm}
 
-    \begin{subfigure}[b]{0.95\textwidth}
+    \begin{subfigure}[b]{0.74\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/PGD.png}
         \caption{PGD attack ($\epsilon = 8/255$, 20 steps): the stronger iterative attack drives the standard model to 100\% confidence on \texttt{cat}, while the robust model maintains the correct \texttt{dog} prediction (64.9\%).}

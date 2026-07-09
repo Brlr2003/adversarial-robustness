@@ -29,7 +29,7 @@ FGSM~\cite{goodfellow2015explaining} computes the gradient of the loss with resp
 
 \subsubsection{Basic Iterative Method (BIM) / Projected Gradient Descent (PGD)}
 
-Kurakin et al.~\cite{kurakin2016adversarialscale} extended FGSM by applying it iteratively with a smaller step size and clipping back into the $\epsilon$-ball after each step. Madry et al.~\cite{madry2018towards} formalized this as projected gradient descent on the inner maximization problem. The main modification was initializing from a random point within the $\epsilon$-ball, which helps the attack explore the loss landscape more effectively. PGD has since become the standard first-order attack for evaluating adversarial robustness. If a model withstands PGD, this is taken as evidence of robustness against first-order adversaries.
+Kurakin et al.~\cite{kurakin2016adversarialphysical} extended FGSM by applying it iteratively with a smaller step size and clipping back into the $\epsilon$-ball after each step. Madry et al.~\cite{madry2018towards} formalized this as projected gradient descent on the inner maximization problem. The main modification was initializing from a random point within the $\epsilon$-ball, which helps the attack explore the loss landscape more effectively. PGD has since become the standard first-order attack for evaluating adversarial robustness. If a model withstands PGD, this is taken as evidence of robustness against first-order adversaries.
 
 \subsection{Optimization-Based Attacks}
 

@@ -274,7 +274,7 @@ def deepfool_attack(model, images, max_iterations=50,
 
 \section{Carlini--Wagner Attack Implementation}
 
-\begin{lstlisting}[language=Python, caption={Carlini-Wagner L2 Attack Implementation}, label={lst:cw}]
+\begin{lstlisting}[language=Python, caption={Carlini--Wagner $L_2$ Attack Implementation}, label={lst:cw}]
 import torch
 import torch.nn as nn
 
@@ -449,19 +449,8 @@ import torch
 
 def evaluate_robustness(model, test_loader, attack_fn,
                         epsilon_values, device):
-    """
-    Evaluate model robustness across epsilon values.
-
-    Args:
-        model: Neural network model
-        test_loader: Test data loader
-        attack_fn: Attack function
-        epsilon_values: List of epsilon values
-        device: Device to run on
-
-    Returns:
-        Dictionary of accuracies for each epsilon
-    """
+    """Evaluate model robustness across a list of epsilon values;
+    returns a dict mapping each epsilon to accuracy (percent)."""
     model.eval()
     results = {}
 
