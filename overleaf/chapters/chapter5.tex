@@ -329,18 +329,18 @@ Figure~\ref{fig:adversarial_examples} shows a CIFAR-10 image attacked with FGSM 
 
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.74\textwidth}
+    \begin{subfigure}[b]{0.95\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/FGSM.png}
+        \includegraphics[width=0.65\linewidth]{figures/FGSM.png}
         \caption{FGSM attack ($\epsilon = 8/255$): the standard model is fooled into predicting \texttt{cat} with 96.1\% confidence, while the robust model still correctly identifies the \texttt{dog} (65.9\%) on the same perturbed image.}
         \label{fig:attack_fgsm}
     \end{subfigure}
 
     \vspace{0.3cm}
 
-    \begin{subfigure}[b]{0.74\textwidth}
+    \begin{subfigure}[b]{0.95\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/PGD.png}
+        \includegraphics[width=0.65\linewidth]{figures/PGD.png}
         \caption{PGD attack ($\epsilon = 8/255$, 20 steps): the stronger iterative attack drives the standard model to 100\% confidence on \texttt{cat}, while the robust model maintains the correct \texttt{dog} prediction (64.9\%).}
         \label{fig:attack_pgd}
     \end{subfigure}

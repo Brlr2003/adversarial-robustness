@@ -6,7 +6,6 @@
 
 % Author information
 \author{Omar}{Alsafarti}
-\studentid{42012418}
 
 % Thesis titles
 \title{ADVERSARIAL ATTACKS ON DEEP NEURAL NETWORKS: GENERATION, EVALUATION, AND ROBUST TRAINING}
@@ -17,6 +16,9 @@
 \date{July 2026}
 \dateenglish{July 2026}
 
+% Approval date (shown on the approval sheet next to "Date:")
+\approvaldate{June 19, 2026}
+
 % Supervisor
 \supervisor{Assoc. Prof. Dr. Arban Uka}
 \supervisorenglish{Assoc. Prof. Dr. Arban Uka}
@@ -24,18 +26,27 @@
 % Department and Faculty
 \department{Computer Engineering}
 \departmentenglish{Computer Engineering}
+\departmentalbanian{Inxhinierisë Kompjuterike}  % Albanian department name (used in ABSTRAKT)
 \faculty{Faculty of Architecture and Engineering}
 \facultyenglish{Faculty of Architecture and Engineering}
 
 % Head of Department (for approval page)
-\headofdepartment{Dr. Florenc Skuka} 
+\headofdepartment{Dr. Florenc Skuka}
+
+% Examining committee members (order as specified by the department)
+\committee
+    {Assoc. Prof. Dr. Dimitrios A. Karras}
+    {Dr. Halit Vural}
+    {Assoc. Prof. Dr. Arban Uka}
+    {}  % Leave empty if not applicable
+    {}  % Leave empty if not applicable
 
 
 % Abstract (English)
 \abstract{
-Deep learning models achieve strong performance on image classification and related tasks, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This vulnerability raises practical concerns for applications in autonomous driving, biometrics, and security.
+Deep learning models achieve strong performance on image classification, yet they are vulnerable to adversarial examples: inputs modified by small, human-imperceptible perturbations that cause confident misclassification. This raises practical concerns for autonomous driving, biometrics, and security.
 
-In this thesis six adversarial attacks are implemented from scratch (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) and evaluated on a ResNet-18 trained on CIFAR-10. The attacks cover white-box, decision-based black-box, and transfer-based settings and the three standard threat models ($L_\infty$, $L_2$, and $L_0$). The standard model achieves 94.1\% clean accuracy but drops to 1.2\% under a 20-step PGD attack at $\epsilon = 8/255$; Carlini--Wagner fools every test image with a median $L_2$ perturbation of only 0.104, and the model is also broken in the black-box setting, where HopSkipJump drives the median $L_2$ perturbation to 0.36 within a 2{,}500-query budget. PGD-based adversarial training is then applied, which produces a model that retains 45.1\% accuracy under PGD at the cost of 10.2 percentage points of clean accuracy, and that requires roughly $7\times$ the $L_2$ perturbation under Carlini--Wagner and $5.8\times$ under HopSkipJump. The robustness gain transfers partially to the One Pixel ($L_0$) attack as well, and adversarial examples crafted on the standard model fail to transfer to the robust one, which rules out gradient masking as the source of its robustness. The results demonstrate both the severity of adversarial vulnerability across multiple threat models and the effectiveness of adversarial training as a defense.
+Six adversarial attacks are implemented from scratch (FGSM, PGD, DeepFool, Carlini--Wagner, HopSkipJump, and One Pixel) and evaluated on a ResNet-18 trained on CIFAR-10, spanning white-box, decision-based black-box, and transfer settings and the $L_\infty$, $L_2$, and $L_0$ threat models. The standard model achieves 94.1\% clean accuracy but only 1.2\% under 20-step PGD at $\epsilon = 8/255$; Carlini--Wagner fools every test image with a median $L_2$ of 0.104, and HopSkipJump reaches 0.36 within 2{,}500 queries without gradient access. PGD adversarial training retains 45.1\% accuracy under PGD for 10.2 percentage points of clean accuracy, and forces roughly $7\times$ the $L_2$ perturbation under Carlini--Wagner and $5.8\times$ under HopSkipJump. The gain transfers partially to One Pixel ($L_0$), and examples crafted on the standard model fail against the robust one, ruling out gradient masking as the source of its robustness.
 }
 
 % Keywords (English)
