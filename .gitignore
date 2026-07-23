@@ -23,6 +23,22 @@ Thumbs.db
 
 # Env
 .env
+.venv314/
+
+# LaTeX build artifacts
+overleaf/thesis.pdf
+overleaf/*.aux
+overleaf/*.log
+overleaf/*.blg
+overleaf/*.bbl
+overleaf/*.toc
+overleaf/*.lof
+overleaf/*.lot
+overleaf/*.out
+overleaf/*.synctex.gz
+
+# Submission bundle (generated)
+*.zip
 
 # Personal notes
 PROJECT_GUIDE.md
